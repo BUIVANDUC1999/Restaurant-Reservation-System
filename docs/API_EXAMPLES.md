@@ -45,3 +45,25 @@ Authorization: Bearer <access-token>
 ```
 
 Món mới chọn có trạng thái `REQUESTED`; sau khi nhân viên trao đổi với khách và gọi API trên, trạng thái chuyển thành `CONFIRMED`.
+
+## Xếp bàn, check-in và hoàn tất phục vụ
+
+```http
+PUT /api/v1/staff/reservations/1/tables
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
+{"tableIds":[1,2]}
+```
+
+```http
+POST /api/v1/staff/reservations/1/check-in
+Authorization: Bearer <access-token>
+```
+
+```http
+POST /api/v1/staff/reservations/1/complete
+Authorization: Bearer <access-token>
+```
+
+Check-in tạo một phiên phục vụ và chuyển bàn sang `OCCUPIED`. Khi hoàn tất, phiên đóng và bàn chuyển sang `NEEDS_CLEANING`.

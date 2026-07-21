@@ -2,6 +2,8 @@ package com.khamphaviet.restaurant.reservation;
 
 import com.khamphaviet.restaurant.common.BusinessException;
 import com.khamphaviet.restaurant.menu.MenuItemRepository;
+import com.khamphaviet.restaurant.table.*;
+import com.khamphaviet.restaurant.service.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
@@ -9,6 +11,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.HashSet;
 
 @Service
 public class ReservationService {
@@ -18,10 +21,16 @@ public class ReservationService {
     private final ReservationRepository repository;
     private final ReservationItemRepository itemRepository;
     private final MenuItemRepository menuRepository;
+    private final RestaurantTableRepository tableRepository;
+    private final ReservationTableAssignmentRepository assignmentRepository;
+    private final ServiceSessionRepository sessionRepository;
     private final SecureRandom random = new SecureRandom();
 
-    public ReservationService(ReservationRepository repository, ReservationItemRepository itemRepository, MenuItemRepository menuRepository) {
+    public ReservationService(ReservationRepository repository, ReservationItemRepository itemRepository, MenuItemRepository menuRepository,
+                              RestaurantTableRepository tableRepository, ReservationTableAssignmentRepository assignmentRepository,
+                              ServiceSessionRepository sessionRepository) {
         this.repository = repository; this.itemRepository = itemRepository; this.menuRepository = menuRepository;
+        this.tableRepository = tableRepository; this.assignmentRepository = assignmentRepository; this.sessionRepository = sessionRepository;
     }
 
     public ReservationDtos.AvailabilityResponse availability(LocalDate date, String slot, int partySize) {
@@ -61,10 +70,16 @@ public class ReservationService {
     }
 
     @Transactional
-    public Reservation updateStatus(Long id, ReservationStatus status) {
+    public ReservationDtos.ReservationResponse updateStatus(Long id, ReservationStatus status) {
         Reservation reservation = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy đơn đặt bàn"));
+        if (reservation.getStatus() != status) {
+            boolean allowed = reservation.getStatus() == ReservationStatus.PENDING && List.of(ReservationStatus.CONFIRMED, ReservationStatus.CANCELLED, ReservationStatus.REJECTED).contains(status)
+                    || reservation.getStatus() == ReservationStatus.CONFIRMED && status == ReservationStatus.CANCELLED;
+            if (!allowed) throw new BusinessException("Chuyển trạng thái đặt bàn không hợp lệ");
+        }
+        if (status == ReservationStatus.CANCELLED || status == ReservationStatus.REJECTED) releaseAssignedTables(id);
         reservation.changeStatus(status);
-        return reservation;
+        return response(reservation, itemRepository.findByReservationIdOrderByIdAsc(id));
     }
 
     @Transactional
@@ -74,6 +89,64 @@ public class ReservationService {
         if (items.isEmpty()) throw new BusinessException("Đơn đặt bàn chưa chọn món trước");
         items.forEach(ReservationItem::confirm);
         return response(reservation, items);
+    }
+
+    @Transactional
+    public ReservationDtos.ReservationResponse assignTables(Long id, List<Long> requestedTableIds) {
+        Reservation reservation = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy đơn đặt bàn"));
+        if (List.of(ReservationStatus.CHECKED_IN, ReservationStatus.COMPLETED, ReservationStatus.CANCELLED, ReservationStatus.REJECTED).contains(reservation.getStatus()))
+            throw new BusinessException("Không thể đổi bàn ở trạng thái hiện tại");
+        List<Long> tableIds = requestedTableIds.stream().distinct().toList();
+        List<RestaurantTable> selectedTables = tableRepository.findAllById(tableIds);
+        if (selectedTables.size() != tableIds.size()) throw new BusinessException("Có bàn không tồn tại");
+        List<ReservationTableAssignment> current = assignmentRepository.findByReservationId(id);
+        var currentIds = current.stream().map(ReservationTableAssignment::getTableId).collect(java.util.stream.Collectors.toSet());
+        if (selectedTables.stream().anyMatch(table -> !table.isActive() || (table.getStatus() != TableStatus.AVAILABLE && !currentIds.contains(table.getId()))))
+            throw new BusinessException("Một hoặc nhiều bàn đã được sử dụng");
+        int capacity = selectedTables.stream().mapToInt(RestaurantTable::getSeats).sum();
+        if (capacity < reservation.getPartySize()) throw new BusinessException("Tổng số ghế chưa đủ cho đoàn khách");
+
+        var selectedIds = new HashSet<>(tableIds);
+        List<ReservationTableAssignment> removed = current.stream().filter(a -> !selectedIds.contains(a.getTableId())).toList();
+        if (!removed.isEmpty()) {
+            List<RestaurantTable> released = tableRepository.findAllById(removed.stream().map(ReservationTableAssignment::getTableId).toList());
+            released.forEach(table -> table.changeStatus(TableStatus.AVAILABLE));
+            assignmentRepository.deleteAll(removed);
+        }
+        selectedTables.forEach(table -> table.changeStatus(TableStatus.RESERVED));
+        tableRepository.saveAll(selectedTables);
+        var newAssignments = tableIds.stream().filter(tableId -> !currentIds.contains(tableId))
+                .map(tableId -> new ReservationTableAssignment(id, tableId)).toList();
+        assignmentRepository.saveAll(newAssignments);
+        return response(reservation, itemRepository.findByReservationIdOrderByIdAsc(id));
+    }
+
+    @Transactional
+    public ReservationDtos.ReservationResponse checkIn(Long id) {
+        Reservation reservation = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy đơn đặt bàn"));
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) throw new BusinessException("Đơn phải được xác nhận trước khi check-in");
+        List<ReservationTableAssignment> assignments = assignmentRepository.findByReservationId(id);
+        if (assignments.isEmpty()) throw new BusinessException("Cần xếp bàn trước khi check-in");
+        List<RestaurantTable> tables = tableRepository.findAllById(assignments.stream().map(ReservationTableAssignment::getTableId).toList());
+        tables.forEach(table -> table.changeStatus(TableStatus.OCCUPIED));
+        tableRepository.saveAll(tables);
+        reservation.changeStatus(ReservationStatus.CHECKED_IN);
+        if (sessionRepository.findByReservationId(id).isEmpty()) sessionRepository.save(new ServiceSession(id));
+        return response(reservation, itemRepository.findByReservationIdOrderByIdAsc(id));
+    }
+
+    @Transactional
+    public ReservationDtos.ReservationResponse completeService(Long id) {
+        Reservation reservation = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy đơn đặt bàn"));
+        if (reservation.getStatus() != ReservationStatus.CHECKED_IN) throw new BusinessException("Khách chưa check-in hoặc lượt phục vụ đã kết thúc");
+        ServiceSession session = sessionRepository.findByReservationId(id).orElseThrow(() -> new BusinessException("Không tìm thấy phiên phục vụ"));
+        session.complete();
+        List<ReservationTableAssignment> assignments = assignmentRepository.findByReservationId(id);
+        List<RestaurantTable> tables = tableRepository.findAllById(assignments.stream().map(ReservationTableAssignment::getTableId).toList());
+        tables.forEach(table -> table.changeStatus(TableStatus.NEEDS_CLEANING));
+        tableRepository.saveAll(tables);
+        reservation.changeStatus(ReservationStatus.COMPLETED);
+        return response(reservation, itemRepository.findByReservationIdOrderByIdAsc(id));
     }
 
     private void savePreOrderItems(Long reservationId, List<ReservationDtos.PreOrderItemRequest> requests) {
@@ -89,14 +162,28 @@ public class ReservationService {
         });
     }
 
+    private void releaseAssignedTables(Long reservationId) {
+        List<ReservationTableAssignment> assignments = assignmentRepository.findByReservationId(reservationId);
+        if (assignments.isEmpty()) return;
+        List<RestaurantTable> tables = tableRepository.findAllById(assignments.stream().map(ReservationTableAssignment::getTableId).toList());
+        tables.forEach(table -> table.changeStatus(TableStatus.AVAILABLE));
+        tableRepository.saveAll(tables);
+        assignmentRepository.deleteAll(assignments);
+    }
+
     private ReservationDtos.ReservationResponse response(Reservation reservation, List<ReservationItem> items) {
         var itemResponses = items.stream().map(item -> new ReservationDtos.PreOrderItemResponse(item.getId(), item.getMenuItemId(),
                 item.getItemNameSnapshot(), item.getUnitPrice(), item.getQuantity(), item.getStatus(),
                 item.getUnitPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())))).toList();
+        List<RestaurantTable> assigned = tableRepository.findAllById(assignmentRepository.findByReservationId(reservation.getId()).stream()
+                .map(ReservationTableAssignment::getTableId).toList());
+        var assignedResponses = assigned.stream().map(table -> new ReservationDtos.AssignedTableResponse(table.getId(), table.getCode(),
+                table.getName(), table.getFloor(), table.getArea(), table.getSeats(), table.getStatus())).toList();
+        Long sessionId = sessionRepository.findByReservationId(reservation.getId()).map(ServiceSession::getId).orElse(null);
         return new ReservationDtos.ReservationResponse(reservation.getId(), reservation.getCode(), reservation.getCustomerName(),
                 reservation.getPhone(), reservation.getEmail(), reservation.getReservationDate(), reservation.getTimeSlot(),
                 reservation.getPartySize(), reservation.getPreferredFloor(), reservation.getNote(), reservation.getStatus(),
-                reservation.getCreatedAt(), itemResponses);
+                reservation.getCreatedAt(), itemResponses, assignedResponses, sessionId);
     }
 
     private void validateSlot(String slot) {

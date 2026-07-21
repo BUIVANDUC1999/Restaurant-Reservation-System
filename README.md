@@ -20,6 +20,8 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Dashboard nhân viên xem, lọc và cập nhật trạng thái đặt bàn.
 - Đăng nhập JWT/RBAC và bảo vệ API nhân viên.
 - Sơ đồ 22 bàn mẫu theo hai tầng, cập nhật trạng thái trực tiếp.
+- Xếp một hoặc nhiều bàn theo sức chứa, check-in và mở phiên phục vụ.
+- Hoàn tất lượt khách và chuyển bàn sang trạng thái cần dọn.
 - API quản lý menu, kiểm tra sức chứa và đặt bàn.
 - PostgreSQL migration và dữ liệu mẫu cho 2 tầng (120/180 ghế).
 - Swagger UI, health check và xử lý lỗi thống nhất.
