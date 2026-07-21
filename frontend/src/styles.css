@@ -30,3 +30,4 @@
 @media(max-width:850px){.checkout-grid{grid-template-columns:1fr}.cashier-heading{align-items:flex-start;flex-direction:column}.register-grid{grid-template-columns:1fr}.register-grid .wide{grid-column:auto}}
 @media(max-width:520px){.register-card{padding:28px}.register-card h1,.cashier-heading h1{font-size:38px}}
 .service-paid-note{font-size:9px;color:#2d7658;margin:10px 0 0}
+.paypal-sandbox{grid-column:1/-1;background:white;padding:12px}.paypal-sandbox>small{display:block;color:#6e7974!important;text-align:center;margin-top:7px}.paypal-sandbox .error{margin:8px 0 0}

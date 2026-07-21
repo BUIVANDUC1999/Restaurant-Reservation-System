@@ -144,6 +144,30 @@ Content-Type: application/json
 
 `method` hỗ trợ `CASH`, `BANK_TRANSFER`, `QR` và `CARD`. Hệ thống từ chối thanh toán khi còn phiếu món chưa phục vụ. Sau thanh toán, nhân viên mới có thể hoàn tất lượt khách và chuyển bàn sang trạng thái cần dọn.
 
+### PayPal Sandbox
+
+PayPal sử dụng luồng riêng để không thể đánh dấu đã thanh toán nếu chưa capture thành công. Trước tiên frontend lấy cấu hình công khai (không chứa Client Secret), sau đó yêu cầu backend tạo đơn:
+
+```http
+GET /api/v1/staff/checkouts/paypal/config
+
+POST /api/v1/staff/checkouts/1/paypal/orders
+Content-Type: application/json
+
+{ "discountAmount": 0 }
+```
+
+Sau khi người mua phê duyệt trong cửa sổ PayPal Sandbox, frontend gửi mã đơn về backend:
+
+```http
+POST /api/v1/staff/checkouts/1/paypal/orders/5O190127TN364715T/capture
+Content-Type: application/json
+
+{ "discountAmount": 0 }
+```
+
+Backend kiểm tra trạng thái `COMPLETED`, phiên phục vụ, loại tiền và số tiền capture trước khi lưu hóa đơn. Giá VND được quy đổi sang USD theo biến `PAYPAL_VND_PER_USD`.
+
 ## Tra cứu trạng thái phục vụ theo bàn
 
 ```http

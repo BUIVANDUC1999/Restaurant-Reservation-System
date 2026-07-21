@@ -21,6 +21,9 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/restaurant
       DB_USERNAME: restaurant
       DB_PASSWORD: restaurant
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+      PAYPAL_VND_PER_USD: ${PAYPAL_VND_PER_USD:-25000}
     ports:
       - "8080:8080"
     depends_on:
@@ -36,4 +39,3 @@ services:
 
 volumes:
   postgres_data:
-

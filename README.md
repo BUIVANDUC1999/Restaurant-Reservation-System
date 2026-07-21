@@ -33,7 +33,7 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Nhân viên tạo nhiều phiếu gọi món cho bàn đang phục vụ, tìm kiếm trong 30 món và gửi ghi chú cho bếp.
 - Màn hình bếp riêng cập nhật phiếu theo luồng mới gửi → đang chế biến → sẵn sàng.
 - Nhân viên xác nhận đã mang món; hệ thống chặn kết thúc lượt khách khi còn phiếu món đang mở.
-- Nhân viên lập hóa đơn theo món đã phục vụ, áp dụng giảm giá và thanh toán bằng tiền mặt, chuyển khoản, QR hoặc thẻ.
+- Nhân viên lập hóa đơn theo món đã phục vụ, áp dụng giảm giá và thanh toán bằng tiền mặt, chuyển khoản, QR, thẻ hoặc PayPal Sandbox.
 - Hệ thống chỉ cho hoàn tất lượt khách sau khi mọi phiếu món đã phục vụ hoặc hủy và hóa đơn đã thanh toán.
 - API quản lý menu, kiểm tra sức chứa và đặt bàn.
 - PostgreSQL migration và dữ liệu mẫu cho 2 tầng (120/180 ghế).
@@ -70,6 +70,18 @@ mvn spring-boot:run -Dspring-boot.run.profiles=demo
 ```
 
 Chế độ `demo` sử dụng H2 trong bộ nhớ và tự nạp dữ liệu món mẫu.
+
+### Cấu hình PayPal Sandbox
+
+Tạo ứng dụng Sandbox trong PayPal Developer Dashboard, sau đó đặt biến môi trường trước khi chạy backend:
+
+```bash
+PAYPAL_CLIENT_ID=your_sandbox_client_id
+PAYPAL_CLIENT_SECRET=your_sandbox_client_secret
+PAYPAL_VND_PER_USD=25000
+```
+
+Với Docker, sao chép `.env.example` thành `.env`, điền hai khóa Sandbox rồi chạy `docker compose up --build`. `Client Secret` chỉ được dùng ở backend và không được commit lên GitHub. Khi chưa cấu hình khóa, các phương thức thanh toán demo khác vẫn hoạt động và giao diện sẽ hiển thị hướng dẫn thay vì nút PayPal.
 
 Tài khoản demo:
 
@@ -108,5 +120,8 @@ docs/      kế hoạch và API mẫu
 - `GET /api/v1/staff/tables/overview`
 - `GET /api/v1/staff/checkouts` (Admin/Nhân viên)
 - `POST /api/v1/staff/checkouts/{serviceSessionId}/pay` (Admin/Nhân viên)
+- `GET /api/v1/staff/checkouts/paypal/config` (Admin/Nhân viên)
+- `POST /api/v1/staff/checkouts/{serviceSessionId}/paypal/orders` (tạo đơn Sandbox)
+- `POST /api/v1/staff/checkouts/{serviceSessionId}/paypal/orders/{orderId}/capture` (capture Sandbox)
 
 > Đây là bộ khung học tập. Trước khi dùng thực tế cần tích hợp cổng thanh toán thật, notification, audit log và kiểm thử tải.

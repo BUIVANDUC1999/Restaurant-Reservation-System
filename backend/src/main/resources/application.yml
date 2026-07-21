@@ -27,3 +27,9 @@ app:
   jwt:
     secret: ${JWT_SECRET:restaurant-reservation-demo-secret-key-change-in-production-2026}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
+  paypal:
+    base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}
+    client-id: ${PAYPAL_CLIENT_ID:}
+    client-secret: ${PAYPAL_CLIENT_SECRET:}
+    currency: ${PAYPAL_CURRENCY:USD}
+    vnd-per-usd: ${PAYPAL_VND_PER_USD:25000}

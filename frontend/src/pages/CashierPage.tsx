@@ -2,8 +2,9 @@ import {Banknote, CheckCircle2, CreditCard, ReceiptText, RefreshCw} from 'lucide
 import {useEffect, useState} from 'react';
 import {api} from '../api';
 import type {Checkout} from '../types';
+import PayPalSandboxButton from '../components/PayPalSandboxButton';
 
-const methods = [['CASH', 'Tiền mặt'], ['BANK_TRANSFER', 'Chuyển khoản'], ['QR', 'Mã QR'], ['CARD', 'Thẻ']] as const;
+const methods = [['CASH', 'Tiền mặt'], ['BANK_TRANSFER', 'Chuyển khoản'], ['QR', 'Mã QR'], ['CARD', 'Thẻ'], ['PAYPAL', 'PayPal Sandbox']] as const;
 
 export default function CashierPage() {
   const [rows, setRows] = useState<Checkout[]>([]);
@@ -51,7 +52,10 @@ export default function CashierPage() {
         {!row.paid && <div className="payment-form">
           <label>Giảm giá<input type="number" min="0" max={row.subtotal} value={discounts[row.serviceSessionId] || 0} onChange={e => setDiscounts(v => ({...v, [row.serviceSessionId]: Number(e.target.value)}))}/></label>
           <label>Phương thức<select value={paymentMethods[row.serviceSessionId] || 'CASH'} onChange={e => setPaymentMethods(v => ({...v, [row.serviceSessionId]: e.target.value}))}>{methods.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-          <button disabled={busy === row.serviceSessionId || row.openOrderCount > 0} onClick={() => pay(row)}><Banknote/> Xác nhận thanh toán</button>
+          {(paymentMethods[row.serviceSessionId] || 'CASH') !== 'PAYPAL' && <button disabled={busy === row.serviceSessionId || row.openOrderCount > 0} onClick={() => pay(row)}><Banknote/> Xác nhận thanh toán</button>}
+          {(paymentMethods[row.serviceSessionId] || 'CASH') === 'PAYPAL' &&
+            <PayPalSandboxButton sessionId={row.serviceSessionId} discountAmount={discounts[row.serviceSessionId] || 0} disabled={row.openOrderCount > 0} onPaid={async () => { await load(); }}/>
+          }
           {row.openOrderCount > 0 && <small>Còn {row.openOrderCount} phiếu món chưa phục vụ.</small>}
         </div>}
         {row.paid && <footer><CreditCard/> {methods.find(([value]) => value === row.paymentMethod)?.[1]} • {row.paidAt && new Date(row.paidAt).toLocaleString('vi-VN')}</footer>}
