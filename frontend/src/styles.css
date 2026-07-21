@@ -21,3 +21,4 @@
 .service-actions .order-link{background:#e3efe9;color:#245b47;padding:8px 9px;font-size:9px;display:flex;align-items:center;gap:5px}.service-actions .order-link svg{width:13px}
 .admin-actions{grid-template-columns:repeat(2,1fr)}
 @media(max-width:900px){.admin-actions{grid-template-columns:1fr}}
+.mini-ticket em{font-style:normal;font-size:7px;background:#f5dfae;color:#795318;padding:3px 5px;margin-left:5px}.kitchen-board article>header b i{font-style:normal;color:#fff0c7}

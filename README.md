@@ -16,6 +16,8 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Thực đơn 30 món Sa Pa/Tây Bắc với tìm kiếm và lọc danh mục.
 - Form đặt bàn với kiểm tra ngày, ca ăn và số lượng khách.
 - Khách chọn số lượng món trước; nhân viên xem và xác nhận lại trên dashboard.
+- Khi check-in, các món chọn trước đã xác nhận tự động trở thành phiếu bếp có nhãn “Món đặt trước”.
+- Hệ thống chặn check-in nếu yêu cầu món chọn trước vẫn chưa được nhân viên xác nhận.
 - Sinh mã đặt bàn và tra cứu đơn.
 - Dashboard nhân viên xem, lọc và cập nhật trạng thái đặt bàn.
 - Dashboard Admin riêng, thống kê tổng tài khoản, nhân viên, khách hàng và trạng thái hoạt động.

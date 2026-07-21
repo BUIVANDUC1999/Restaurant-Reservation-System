@@ -13,6 +13,6 @@ public final class DiningOrderDtos {
     public record StatusRequest(@NotNull DiningOrderStatus status) {}
     public record ItemResponse(Long id, Long menuItemId, String itemName, BigDecimal unitPrice, int quantity, BigDecimal lineTotal) {}
     public record OrderResponse(Long id, Long serviceSessionId, Long reservationId, String reservationCode, String customerName,
-                                List<String> tableCodes, DiningOrderStatus status, String note, Instant createdAt,
+                                List<String> tableCodes, DiningOrderStatus status, OrderSource source, String note, Instant createdAt,
                                 Instant updatedAt, List<ItemResponse> items, BigDecimal total) {}
 }

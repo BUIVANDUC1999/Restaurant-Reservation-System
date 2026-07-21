@@ -45,6 +45,7 @@ Authorization: Bearer <access-token>
 ```
 
 Món mới chọn có trạng thái `REQUESTED`; sau khi nhân viên trao đổi với khách và gọi API trên, trạng thái chuyển thành `CONFIRMED`.
+Khi khách check-in, hệ thống tự tạo phiếu bếp nguồn `PREORDER` từ các món đã xác nhận. Nếu còn món ở trạng thái `REQUESTED`, thao tác check-in sẽ bị từ chối.
 
 ## Xếp bàn, check-in và hoàn tất phục vụ
 

@@ -45,6 +45,15 @@ public class DiningOrderService {
         return orders.findByServiceSessionIdOrderByCreatedAtDesc(sessionId).stream().map(order->response(order,session)).toList();
     }
 
+    @Transactional
+    public void createFromPreOrder(Long sessionId, List<ReservationItem> preOrderItems) {
+        List<ReservationItem> confirmed = preOrderItems.stream().filter(item -> item.getStatus() == PreOrderStatus.CONFIRMED).toList();
+        if (confirmed.isEmpty() || orders.existsByServiceSessionIdAndSource(sessionId, OrderSource.PREORDER)) return;
+        DiningOrder order = orders.save(new DiningOrder(sessionId, "Món khách chọn trước khi đặt bàn", OrderSource.PREORDER));
+        confirmed.forEach(item -> items.save(new DiningOrderItem(order.getId(), item.getMenuItemId(), item.getItemNameSnapshot(),
+                item.getUnitPrice(), item.getQuantity())));
+    }
+
     public List<DiningOrderDtos.OrderResponse> kitchenBoard() {
         return orders.findAllByOrderByCreatedAtDesc().stream()
                 .filter(order->List.of(DiningOrderStatus.SUBMITTED,DiningOrderStatus.PREPARING,DiningOrderStatus.READY).contains(order.getStatus()))
@@ -79,6 +88,6 @@ public class DiningOrderService {
         List<String> tableCodes=tables.findAllById(assignments.findByReservationId(reservation.getId()).stream().map(ReservationTableAssignment::getTableId).toList()).stream().map(t->t.getCode()).sorted().toList();
         List<DiningOrderDtos.ItemResponse> lines=items.findByOrderIdInOrderByIdAsc(List.of(order.getId())).stream().map(item->{BigDecimal lineTotal=item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));return new DiningOrderDtos.ItemResponse(item.getId(),item.getMenuItemId(),item.getItemNameSnapshot(),item.getUnitPrice(),item.getQuantity(),lineTotal);}).toList();
         BigDecimal total=lines.stream().map(DiningOrderDtos.ItemResponse::lineTotal).reduce(BigDecimal.ZERO,BigDecimal::add);
-        return new DiningOrderDtos.OrderResponse(order.getId(),order.getServiceSessionId(),reservation.getId(),reservation.getCode(),reservation.getCustomerName(),tableCodes,order.getStatus(),order.getNote(),order.getCreatedAt(),order.getUpdatedAt(),lines,total);
+        return new DiningOrderDtos.OrderResponse(order.getId(),order.getServiceSessionId(),reservation.getId(),reservation.getCode(),reservation.getCustomerName(),tableCodes,order.getStatus(),order.getSource(),order.getNote(),order.getCreatedAt(),order.getUpdatedAt(),lines,total);
     }
 }
