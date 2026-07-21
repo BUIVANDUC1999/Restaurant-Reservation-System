@@ -9,4 +9,6 @@ import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
 import TablesPage from './pages/TablesPage'
 import ProtectedRoute from './components/ProtectedRoute'
-export default function App(){return <><Header/><main><Routes><Route path="/" element={<HomePage/>}/><Route path="/thuc-don" element={<MenuPage/>}/><Route path="/dat-ban" element={<ReservationPage/>}/><Route path="/tra-cuu" element={<LookupPage/>}/><Route path="/dang-nhap" element={<LoginPage/>}/><Route path="/staff" element={<ProtectedRoute><DashboardPage/></ProtectedRoute>}/><Route path="/staff/ban" element={<ProtectedRoute><TablesPage/></ProtectedRoute>}/></Routes></main><Footer/></>}
+import CustomerPage from './pages/CustomerPage'
+const staffRoles=['ADMIN','STAFF'] as const;
+export default function App(){return <><Header/><main><Routes><Route path="/" element={<HomePage/>}/><Route path="/thuc-don" element={<MenuPage/>}/><Route path="/dat-ban" element={<ReservationPage/>}/><Route path="/tra-cuu" element={<LookupPage/>}/><Route path="/dang-nhap" element={<LoginPage/>}/><Route path="/tai-khoan" element={<ProtectedRoute roles={['CUSTOMER']}><CustomerPage/></ProtectedRoute>}/><Route path="/staff" element={<ProtectedRoute roles={[...staffRoles]}><DashboardPage/></ProtectedRoute>}/><Route path="/staff/ban" element={<ProtectedRoute roles={[...staffRoles]}><TablesPage/></ProtectedRoute>}/></Routes></main><Footer/></>}

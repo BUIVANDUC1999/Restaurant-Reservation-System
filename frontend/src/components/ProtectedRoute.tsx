@@ -1,3 +1,2 @@
-import type{ReactNode}from'react';import{Navigate,useLocation}from'react-router-dom';import{useAuth}from'../auth'
-export default function ProtectedRoute({children}:{children:ReactNode}){const{user}=useAuth();const location=useLocation();return user?<>{children}</>:<Navigate to="/dang-nhap" replace state={{from:location.pathname}}/>}
-
+import type{ReactNode}from'react';import{Navigate,useLocation}from'react-router-dom';import{useAuth}from'../auth';import type{AuthUser}from'../types'
+export default function ProtectedRoute({children,roles}:{children:ReactNode;roles?:AuthUser['role'][]}){const{user}=useAuth();const location=useLocation();if(!user)return <Navigate to="/dang-nhap" replace state={{from:location.pathname}}/>;if(roles&&!roles.includes(user.role))return <Navigate to={user.role==='CUSTOMER'?'/tai-khoan':'/staff'} replace/>;return <>{children}</>}

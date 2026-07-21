@@ -54,7 +54,11 @@ mvn spring-boot:run -Dspring-boot.run.profiles=demo
 
 Chế độ `demo` sử dụng H2 trong bộ nhớ và tự nạp dữ liệu món mẫu.
 
-Tài khoản quản trị demo: `admin@khamphaviet.vn` / `Admin@123`.
+Tài khoản demo:
+
+- Admin: `admin@khamphaviet.vn` / `Admin@123`
+- Nhân viên: `staff@khamphaviet.vn` / `Staff@123`
+- Khách hàng: `customer@khamphaviet.vn` / `Customer@123`
 
 ## Cấu trúc
 
