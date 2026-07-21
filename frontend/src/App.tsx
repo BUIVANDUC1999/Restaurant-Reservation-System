@@ -6,5 +6,7 @@ import MenuPage from './pages/MenuPage'
 import ReservationPage from './pages/ReservationPage'
 import LookupPage from './pages/LookupPage'
 import DashboardPage from './pages/DashboardPage'
-export default function App(){return <><Header/><main><Routes><Route path="/" element={<HomePage/>}/><Route path="/thuc-don" element={<MenuPage/>}/><Route path="/dat-ban" element={<ReservationPage/>}/><Route path="/tra-cuu" element={<LookupPage/>}/><Route path="/staff" element={<DashboardPage/>}/></Routes></main><Footer/></>}
-
+import LoginPage from './pages/LoginPage'
+import TablesPage from './pages/TablesPage'
+import ProtectedRoute from './components/ProtectedRoute'
+export default function App(){return <><Header/><main><Routes><Route path="/" element={<HomePage/>}/><Route path="/thuc-don" element={<MenuPage/>}/><Route path="/dat-ban" element={<ReservationPage/>}/><Route path="/tra-cuu" element={<LookupPage/>}/><Route path="/dang-nhap" element={<LoginPage/>}/><Route path="/staff" element={<ProtectedRoute><DashboardPage/></ProtectedRoute>}/><Route path="/staff/ban" element={<ProtectedRoute><TablesPage/></ProtectedRoute>}/></Routes></main><Footer/></>}

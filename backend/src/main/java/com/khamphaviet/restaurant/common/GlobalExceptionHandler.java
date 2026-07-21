@@ -3,6 +3,7 @@ package com.khamphaviet.restaurant.common;
 import org.springframework.http.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.AccessDeniedException;
 import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,8 +20,10 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "Dữ liệu gửi lên chưa hợp lệ", fields);
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<?> denied(AccessDeniedException ex) { return error(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này", Map.of()); }
+
     private ResponseEntity<?> error(HttpStatus status, String message, Map<String, String> fields) {
         return ResponseEntity.status(status).body(Map.of("timestamp", Instant.now(), "status", status.value(), "message", message, "fieldErrors", fields));
     }
 }
-

@@ -16,6 +16,8 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Form đặt bàn với kiểm tra ngày, ca ăn và số lượng khách.
 - Sinh mã đặt bàn và tra cứu đơn.
 - Dashboard nhân viên xem, lọc và cập nhật trạng thái đặt bàn.
+- Đăng nhập JWT/RBAC và bảo vệ API nhân viên.
+- Sơ đồ 22 bàn mẫu theo hai tầng, cập nhật trạng thái trực tiếp.
 - API quản lý menu, kiểm tra sức chứa và đặt bàn.
 - PostgreSQL migration và dữ liệu mẫu cho 2 tầng (120/180 ghế).
 - Swagger UI, health check và xử lý lỗi thống nhất.
@@ -51,6 +53,8 @@ mvn spring-boot:run -Dspring-boot.run.profiles=demo
 ```
 
 Chế độ `demo` sử dụng H2 trong bộ nhớ và tự nạp dữ liệu món mẫu.
+
+Tài khoản quản trị demo: `admin@khamphaviet.vn` / `Admin@123`.
 
 ## Cấu trúc
 
