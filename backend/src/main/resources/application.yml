@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: restaurant-reservation
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/restaurant}
+    username: ${DB_USERNAME:restaurant}
+    password: ${DB_PASSWORD:restaurant}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
+server:
+  port: ${PORT:8080}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
