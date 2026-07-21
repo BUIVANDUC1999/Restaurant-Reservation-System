@@ -18,6 +18,8 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Khách chọn số lượng món trước; nhân viên xem và xác nhận lại trên dashboard.
 - Sinh mã đặt bàn và tra cứu đơn.
 - Dashboard nhân viên xem, lọc và cập nhật trạng thái đặt bàn.
+- Dashboard Admin riêng, thống kê tổng tài khoản, nhân viên, khách hàng và trạng thái hoạt động.
+- Danh sách tài khoản có tìm kiếm, lọc vai trò và không làm lộ mật khẩu.
 - Đăng nhập JWT/RBAC và bảo vệ API nhân viên.
 - Sơ đồ 22 bàn mẫu theo hai tầng, cập nhật trạng thái trực tiếp.
 - Xếp một hoặc nhiều bàn theo sức chứa, check-in và mở phiên phục vụ.
@@ -81,5 +83,7 @@ docs/      kế hoạch và API mẫu
 - `GET /api/v1/reservations/lookup?code=...&phone=...`
 - `GET /api/v1/staff/reservations`
 - `PATCH /api/v1/staff/reservations/{id}/status`
+- `GET /api/v1/admin/users/stats` (chỉ Admin)
+- `GET /api/v1/admin/users` (chỉ Admin)
 
-> Đây là bộ khung học tập. Trước khi dùng thực tế cần bổ sung xác thực JWT/RBAC, thanh toán, notification, audit log và kiểm thử tải.
+> Đây là bộ khung học tập. Trước khi dùng thực tế cần bổ sung thanh toán, notification, audit log và kiểm thử tải.
