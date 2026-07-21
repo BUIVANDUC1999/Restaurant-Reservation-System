@@ -6,3 +6,5 @@ export type AuthUser={accessToken:string;id:number;fullName:string;email:string;
 export type UserStats={totalCount:number;adminCount:number;employeeCount:number;customerCount:number;activeCount:number}
 export type UserSummary={id:number;fullName:string;email:string;role:AuthUser['role'];active:boolean;createdAt:string}
 export type RestaurantTable={id:number;code:string;name:string;floor:string;area:string;seats:number;status:'AVAILABLE'|'RESERVED'|'OCCUPIED'|'NEEDS_CLEANING'|'INACTIVE';active:boolean}
+export type DiningOrderItem={id:number;menuItemId:number;itemName:string;unitPrice:number;quantity:number;lineTotal:number}
+export type DiningOrder={id:number;serviceSessionId:number;reservationId:number;reservationCode:string;customerName:string;tableCodes:string[];status:'SUBMITTED'|'PREPARING'|'READY'|'SERVED'|'CANCELLED';note?:string;createdAt:string;updatedAt:string;items:DiningOrderItem[];total:number}

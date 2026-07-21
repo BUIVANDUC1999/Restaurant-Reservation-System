@@ -22,6 +22,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/reservations/**").permitAll()
                         .requestMatchers("/api/v1/customer/**").hasRole("CUSTOMER")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/kitchen/**").hasAnyRole("ADMIN", "KITCHEN")
                         .requestMatchers("/api/v1/staff/**").hasAnyRole("ADMIN", "STAFF")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class).build();

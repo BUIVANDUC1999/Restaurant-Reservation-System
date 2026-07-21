@@ -4,6 +4,7 @@ import com.khamphaviet.restaurant.common.BusinessException;
 import com.khamphaviet.restaurant.menu.MenuItemRepository;
 import com.khamphaviet.restaurant.table.*;
 import com.khamphaviet.restaurant.service.*;
+import com.khamphaviet.restaurant.order.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
@@ -24,13 +25,15 @@ public class ReservationService {
     private final RestaurantTableRepository tableRepository;
     private final ReservationTableAssignmentRepository assignmentRepository;
     private final ServiceSessionRepository sessionRepository;
+    private final DiningOrderRepository diningOrderRepository;
     private final SecureRandom random = new SecureRandom();
 
     public ReservationService(ReservationRepository repository, ReservationItemRepository itemRepository, MenuItemRepository menuRepository,
                               RestaurantTableRepository tableRepository, ReservationTableAssignmentRepository assignmentRepository,
-                              ServiceSessionRepository sessionRepository) {
+                              ServiceSessionRepository sessionRepository, DiningOrderRepository diningOrderRepository) {
         this.repository = repository; this.itemRepository = itemRepository; this.menuRepository = menuRepository;
         this.tableRepository = tableRepository; this.assignmentRepository = assignmentRepository; this.sessionRepository = sessionRepository;
+        this.diningOrderRepository = diningOrderRepository;
     }
 
     public ReservationDtos.AvailabilityResponse availability(LocalDate date, String slot, int partySize) {
@@ -140,6 +143,8 @@ public class ReservationService {
         Reservation reservation = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy đơn đặt bàn"));
         if (reservation.getStatus() != ReservationStatus.CHECKED_IN) throw new BusinessException("Khách chưa check-in hoặc lượt phục vụ đã kết thúc");
         ServiceSession session = sessionRepository.findByReservationId(id).orElseThrow(() -> new BusinessException("Không tìm thấy phiên phục vụ"));
+        if (diningOrderRepository.existsByServiceSessionIdAndStatusIn(session.getId(), List.of(DiningOrderStatus.SUBMITTED, DiningOrderStatus.PREPARING, DiningOrderStatus.READY)))
+            throw new BusinessException("Cần phục vụ hoặc hủy hết các phiếu món đang mở trước khi hoàn tất");
         session.complete();
         List<ReservationTableAssignment> assignments = assignmentRepository.findByReservationId(id);
         List<RestaurantTable> tables = tableRepository.findAllById(assignments.stream().map(ReservationTableAssignment::getTableId).toList());

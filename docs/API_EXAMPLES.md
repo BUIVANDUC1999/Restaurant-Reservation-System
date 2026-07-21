@@ -67,3 +67,36 @@ Authorization: Bearer <access-token>
 ```
 
 Check-in tạo một phiên phục vụ và chuyển bàn sang `OCCUPIED`. Khi hoàn tất, phiên đóng và bàn chuyển sang `NEEDS_CLEANING`.
+
+## Gọi món và điều phối bếp
+
+Sau khi khách check-in và có `serviceSessionId`, nhân viên tạo phiếu gọi món:
+
+```http
+POST /api/v1/staff/service-sessions/1/orders
+Authorization: Bearer <staff-token>
+Content-Type: application/json
+
+{
+  "items": [
+    { "menuItemId": 1, "quantity": 2 },
+    { "menuItemId": 5, "quantity": 1 }
+  ],
+  "note": "Ít cay, một phần không hành"
+}
+```
+
+Bếp lấy danh sách phiếu đang mở và cập nhật tuần tự:
+
+```http
+GET /api/v1/kitchen/orders
+PATCH /api/v1/kitchen/orders/1/status
+
+{ "status": "PREPARING" }
+```
+
+Sau `PREPARING`, bếp chuyển sang `READY`; nhân viên phục vụ xác nhận đã mang món:
+
+```http
+PATCH /api/v1/staff/orders/1/served
+```

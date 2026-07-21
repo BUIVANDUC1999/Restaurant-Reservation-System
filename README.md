@@ -24,6 +24,9 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Sơ đồ 22 bàn mẫu theo hai tầng, cập nhật trạng thái trực tiếp.
 - Xếp một hoặc nhiều bàn theo sức chứa, check-in và mở phiên phục vụ.
 - Hoàn tất lượt khách và chuyển bàn sang trạng thái cần dọn.
+- Nhân viên tạo nhiều phiếu gọi món cho bàn đang phục vụ, tìm kiếm trong 30 món và gửi ghi chú cho bếp.
+- Màn hình bếp riêng cập nhật phiếu theo luồng mới gửi → đang chế biến → sẵn sàng.
+- Nhân viên xác nhận đã mang món; hệ thống chặn kết thúc lượt khách khi còn phiếu món đang mở.
 - API quản lý menu, kiểm tra sức chứa và đặt bàn.
 - PostgreSQL migration và dữ liệu mẫu cho 2 tầng (120/180 ghế).
 - Swagger UI, health check và xử lý lỗi thống nhất.
@@ -65,6 +68,7 @@ Tài khoản demo:
 - Admin: `admin@khamphaviet.vn` / `Admin@123`
 - Nhân viên: `staff@khamphaviet.vn` / `Staff@123`
 - Khách hàng: `customer@khamphaviet.vn` / `Customer@123`
+- Nhân viên bếp: `kitchen@khamphaviet.vn` / `Kitchen@123`
 
 ## Cấu trúc
 
@@ -85,5 +89,9 @@ docs/      kế hoạch và API mẫu
 - `PATCH /api/v1/staff/reservations/{id}/status`
 - `GET /api/v1/admin/users/stats` (chỉ Admin)
 - `GET /api/v1/admin/users` (chỉ Admin)
+- `POST /api/v1/staff/service-sessions/{id}/orders`
+- `PATCH /api/v1/staff/orders/{id}/served`
+- `GET /api/v1/kitchen/orders` (Admin/Bếp)
+- `PATCH /api/v1/kitchen/orders/{id}/status` (Admin/Bếp)
 
 > Đây là bộ khung học tập. Trước khi dùng thực tế cần bổ sung thanh toán, notification, audit log và kiểm thử tải.

@@ -1,4 +1,4 @@
-import type {AuthUser,MenuItem,Reservation,RestaurantTable,UserStats,UserSummary} from './types'
+import type {AuthUser,DiningOrder,MenuItem,Reservation,RestaurantTable,UserStats,UserSummary} from './types'
 const BASE=import.meta.env.VITE_API_URL||'/api/v1'
 const token=()=>{try{return JSON.parse(localStorage.getItem('restaurant_auth')||'null')?.accessToken}catch{return null}}
 async function request<T>(path:string,options?:RequestInit):Promise<T>{const auth=token();const response=await fetch(`${BASE}${path}`,{headers:{'Content-Type':'application/json',...(auth?{Authorization:`Bearer ${auth}`}:{}) ,...options?.headers},...options});const text=await response.text();let data:null|Record<string,unknown>=null;try{data=text?JSON.parse(text):null}catch{data=null}if(!response.ok)throw new Error(typeof data?.message==='string'?data.message:(response.status===401||response.status===403?'Phiên đăng nhập không hợp lệ':'Có lỗi xảy ra'));return data as T}
@@ -17,5 +17,11 @@ export const api={
   completeService:(id:number)=>request<Reservation>(`/staff/reservations/${id}/complete`,{method:'POST'}),
   tables:()=>request<RestaurantTable[]>('/staff/tables'),
   updateTableStatus:(id:number,status:string)=>request<RestaurantTable>(`/staff/tables/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
-  createTable:(body:unknown)=>request<RestaurantTable>('/staff/tables',{method:'POST',body:JSON.stringify(body)})
+  createTable:(body:unknown)=>request<RestaurantTable>('/staff/tables',{method:'POST',body:JSON.stringify(body)}),
+  sessionOrders:(sessionId:number)=>request<DiningOrder[]>(`/staff/service-sessions/${sessionId}/orders`),
+  createOrder:(sessionId:number,body:unknown)=>request<DiningOrder>(`/staff/service-sessions/${sessionId}/orders`,{method:'POST',body:JSON.stringify(body)}),
+  serveOrder:(id:number)=>request<DiningOrder>(`/staff/orders/${id}/served`,{method:'PATCH'}),
+  cancelOrder:(id:number)=>request<DiningOrder>(`/staff/orders/${id}/cancel`,{method:'PATCH'}),
+  kitchenOrders:()=>request<DiningOrder[]>('/kitchen/orders'),
+  updateKitchenOrder:(id:number,status:'PREPARING'|'READY')=>request<DiningOrder>(`/kitchen/orders/${id}/status`,{method:'PATCH',body:JSON.stringify({status})})
 }
