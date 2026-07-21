@@ -24,6 +24,8 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Danh sách tài khoản có tìm kiếm, lọc vai trò và không làm lộ mật khẩu.
 - Đăng nhập JWT/RBAC và bảo vệ API nhân viên.
 - Sơ đồ 22 bàn mẫu theo hai tầng, cập nhật trạng thái trực tiếp.
+- Tra cứu bàn theo mã, tên hoặc khu vực; hiển thị khách đang ngồi, số khách và phiếu món cần phục vụ.
+- Phân biệt bàn đang dùng bữa, chờ bếp, cần mang món, cần dọn và bàn trống; tự động làm mới mỗi 10 giây.
 - Xếp một hoặc nhiều bàn theo sức chứa, check-in và mở phiên phục vụ.
 - Hoàn tất lượt khách và chuyển bàn sang trạng thái cần dọn.
 - Nhân viên tạo nhiều phiếu gọi món cho bàn đang phục vụ, tìm kiếm trong 30 món và gửi ghi chú cho bếp.
@@ -96,5 +98,6 @@ docs/      kế hoạch và API mẫu
 - `PATCH /api/v1/staff/orders/{id}/served`
 - `GET /api/v1/kitchen/orders` (Admin/Bếp)
 - `PATCH /api/v1/kitchen/orders/{id}/status` (Admin/Bếp)
+- `GET /api/v1/staff/tables/overview`
 
 > Đây là bộ khung học tập. Trước khi dùng thực tế cần bổ sung thanh toán, notification, audit log và kiểm thử tải.

@@ -103,3 +103,12 @@ PATCH /api/v1/staff/orders/1/served
 ```
 
 Trường `openOrderCount` trong dữ liệu đặt bàn cho biết số phiếu còn ở trạng thái `SUBMITTED`, `PREPARING` hoặc `READY`. Chỉ khi giá trị này bằng `0`, nhân viên mới có thể hoàn tất lượt khách.
+
+## Tra cứu trạng thái phục vụ theo bàn
+
+```http
+GET /api/v1/staff/tables/overview
+Authorization: Bearer <staff-token>
+```
+
+Mỗi bàn có `serviceState`: `EMPTY`, `RESERVED`, `DINING`, `WAITING_KITCHEN`, `NEEDS_SERVING`, `NEEDS_CLEANING` hoặc `INACTIVE`. Khi có khách, phản hồi kèm thông tin đặt bàn, phiên phục vụ, `openOrderCount` và `readyOrderCount`.

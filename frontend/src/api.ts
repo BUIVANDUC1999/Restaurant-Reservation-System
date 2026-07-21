@@ -1,4 +1,4 @@
-import type {AuthUser,DiningOrder,MenuItem,Reservation,RestaurantTable,UserStats,UserSummary} from './types'
+import type {AuthUser,DiningOrder,MenuItem,Reservation,RestaurantTable,TableOverview,UserStats,UserSummary} from './types'
 const BASE=import.meta.env.VITE_API_URL||'/api/v1'
 const token=()=>{try{return JSON.parse(localStorage.getItem('restaurant_auth')||'null')?.accessToken}catch{return null}}
 async function request<T>(path:string,options?:RequestInit):Promise<T>{const auth=token();const response=await fetch(`${BASE}${path}`,{headers:{'Content-Type':'application/json',...(auth?{Authorization:`Bearer ${auth}`}:{}) ,...options?.headers},...options});const text=await response.text();let data:null|Record<string,unknown>=null;try{data=text?JSON.parse(text):null}catch{data=null}if(!response.ok)throw new Error(typeof data?.message==='string'?data.message:(response.status===401||response.status===403?'Phiên đăng nhập không hợp lệ':'Có lỗi xảy ra'));return data as T}
@@ -16,6 +16,7 @@ export const api={
   checkIn:(id:number)=>request<Reservation>(`/staff/reservations/${id}/check-in`,{method:'POST'}),
   completeService:(id:number)=>request<Reservation>(`/staff/reservations/${id}/complete`,{method:'POST'}),
   tables:()=>request<RestaurantTable[]>('/staff/tables'),
+  tableOverview:()=>request<TableOverview[]>('/staff/tables/overview'),
   updateTableStatus:(id:number,status:string)=>request<RestaurantTable>(`/staff/tables/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
   createTable:(body:unknown)=>request<RestaurantTable>('/staff/tables',{method:'POST',body:JSON.stringify(body)}),
   sessionOrders:(sessionId:number)=>request<DiningOrder[]>(`/staff/service-sessions/${sessionId}/orders`),

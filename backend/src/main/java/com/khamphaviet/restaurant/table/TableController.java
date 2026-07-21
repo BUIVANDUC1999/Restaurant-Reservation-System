@@ -10,12 +10,14 @@ import java.util.List;
 @RequestMapping("/api/v1/staff/tables")
 public class TableController {
     private final RestaurantTableRepository repository;
-    public TableController(RestaurantTableRepository repository) { this.repository = repository; }
+    private final TableOverviewService overviewService;
+    public TableController(RestaurantTableRepository repository, TableOverviewService overviewService) { this.repository = repository; this.overviewService = overviewService; }
     public record CreateRequest(@NotBlank String code, @NotBlank String name, @NotBlank String floor,
                                 @NotBlank String area, @NotNull @Min(1) @Max(30) Integer seats) {}
     public record StatusRequest(@NotNull TableStatus status) {}
 
     @GetMapping public List<RestaurantTable> list() { return repository.findAllByOrderByFloorAscCodeAsc(); }
+    @GetMapping("/overview") public List<TableOverviewService.TableOverview> overview() { return overviewService.list(); }
     @PostMapping public RestaurantTable create(@Valid @RequestBody CreateRequest request) {
         if (repository.existsByCodeIgnoreCase(request.code())) throw new BusinessException("Mã bàn đã tồn tại");
         return repository.save(new RestaurantTable(request.code().trim().toUpperCase(), request.name().trim(),
@@ -26,4 +28,3 @@ public class TableController {
         table.changeStatus(request.status()); return repository.save(table);
     }
 }
-
