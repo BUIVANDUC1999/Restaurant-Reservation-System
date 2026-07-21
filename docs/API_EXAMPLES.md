@@ -1,5 +1,21 @@
 # API examples
 
+## Đăng ký tài khoản khách hàng
+
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Nguyễn Văn An",
+  "phone": "0984353577",
+  "email": "an@example.com",
+  "password": "Customer@123"
+}
+```
+
+Tài khoản mới luôn được cấp vai trò `CUSTOMER`. Phản hồi chứa access token để giao diện tự đăng nhập.
+
 ## Tạo đặt bàn
 
 ```http
@@ -102,7 +118,31 @@ Sau `PREPARING`, bếp chuyển sang `READY`; nhân viên phục vụ xác nhậ
 PATCH /api/v1/staff/orders/1/served
 ```
 
-Trường `openOrderCount` trong dữ liệu đặt bàn cho biết số phiếu còn ở trạng thái `SUBMITTED`, `PREPARING` hoặc `READY`. Chỉ khi giá trị này bằng `0`, nhân viên mới có thể hoàn tất lượt khách.
+Trường `openOrderCount` trong dữ liệu đặt bàn cho biết số phiếu còn ở trạng thái `SUBMITTED`, `PREPARING` hoặc `READY`.
+
+## Lập hóa đơn và thanh toán
+
+Thu ngân lấy các phiên phục vụ đang hoạt động:
+
+```http
+GET /api/v1/cashier/checkouts
+Authorization: Bearer <cashier-token>
+```
+
+Thanh toán hóa đơn theo phiên phục vụ:
+
+```http
+POST /api/v1/cashier/checkouts/1/pay
+Authorization: Bearer <cashier-token>
+Content-Type: application/json
+
+{
+  "method": "QR",
+  "discountAmount": 50000
+}
+```
+
+`method` hỗ trợ `CASH`, `BANK_TRANSFER`, `QR` và `CARD`. Hệ thống từ chối thanh toán khi còn phiếu món chưa phục vụ. Sau thanh toán, nhân viên mới có thể hoàn tất lượt khách và chuyển bàn sang trạng thái cần dọn.
 
 ## Tra cứu trạng thái phục vụ theo bàn
 

@@ -1,11 +1,13 @@
 export type MenuItem={id:number;name:string;category:string;price:number;description:string;imageUrl:string;featured:boolean}
 export type PreOrderItem={id:number;menuItemId:number;itemName:string;unitPrice:number;quantity:number;status:'REQUESTED'|'CONFIRMED'|'CANCELLED';lineTotal:number}
 export type AssignedTable={id:number;code:string;name:string;floor:string;area:string;seats:number;status:RestaurantTable['status']}
-export type Reservation={id:number;code:string;customerName:string;phone:string;email?:string;reservationDate:string;timeSlot:'LUNCH'|'DINNER';partySize:number;preferredFloor?:string;note?:string;status:string;createdAt:string;preOrderItems:PreOrderItem[];assignedTables:AssignedTable[];serviceSessionId?:number;openOrderCount:number}
+export type Reservation={id:number;code:string;customerName:string;phone:string;email?:string;reservationDate:string;timeSlot:'LUNCH'|'DINNER';partySize:number;preferredFloor?:string;note?:string;status:string;createdAt:string;preOrderItems:PreOrderItem[];assignedTables:AssignedTable[];serviceSessionId?:number;openOrderCount:number;paid:boolean}
 export type AuthUser={accessToken:string;id:number;fullName:string;email:string;role:'ADMIN'|'STAFF'|'KITCHEN'|'CASHIER'|'CUSTOMER'}
 export type UserStats={totalCount:number;adminCount:number;employeeCount:number;customerCount:number;activeCount:number}
 export type UserSummary={id:number;fullName:string;email:string;role:AuthUser['role'];active:boolean;createdAt:string}
 export type RestaurantTable={id:number;code:string;name:string;floor:string;area:string;seats:number;status:'AVAILABLE'|'RESERVED'|'OCCUPIED'|'NEEDS_CLEANING'|'INACTIVE';active:boolean}
 export type TableOverview=RestaurantTable&{serviceState:'EMPTY'|'RESERVED'|'DINING'|'WAITING_KITCHEN'|'NEEDS_SERVING'|'NEEDS_CLEANING'|'INACTIVE';reservationId?:number;reservationCode?:string;customerName?:string;customerPhone?:string;partySize?:number;serviceSessionId?:number;openOrderCount:number;readyOrderCount:number}
+export type CheckoutLine={itemName:string;quantity:number;unitPrice:number;lineTotal:number}
+export type Checkout={serviceSessionId:number;reservationId:number;reservationCode:string;customerName:string;tableCodes:string[];partySize:number;items:CheckoutLine[];subtotal:number;openOrderCount:number;paid:boolean;paymentId?:number;invoiceCode?:string;discountAmount:number;totalAmount:number;paymentMethod?:'CASH'|'BANK_TRANSFER'|'QR'|'CARD';paidAt?:string}
 export type DiningOrderItem={id:number;menuItemId:number;itemName:string;unitPrice:number;quantity:number;lineTotal:number}
 export type DiningOrder={id:number;serviceSessionId:number;reservationId:number;reservationCode:string;customerName:string;tableCodes:string[];status:'SUBMITTED'|'PREPARING'|'READY'|'SERVED'|'CANCELLED';source:'PREORDER'|'TABLE_ORDER';note?:string;createdAt:string;updatedAt:string;items:DiningOrderItem[];total:number}

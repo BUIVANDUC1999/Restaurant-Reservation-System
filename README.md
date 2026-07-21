@@ -12,8 +12,9 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 ## Chức năng đã có trong starter
 
 - Trang chủ responsive mang phong cách ẩm thực Tây Bắc.
+- Banner thương hiệu “Hương vị quê hương”.
 - Danh sách món nổi bật lấy từ API.
-- Thực đơn 30 món Sa Pa/Tây Bắc với tìm kiếm và lọc danh mục.
+- Thực đơn 30 món Sa Pa/Tây Bắc với tìm kiếm và lọc danh mục; đã thay nhóm thực đơn đoàn bằng các món gọi lẻ.
 - Form đặt bàn với kiểm tra ngày, ca ăn và số lượng khách.
 - Khách chọn số lượng món trước; nhân viên xem và xác nhận lại trên dashboard.
 - Khi check-in, các món chọn trước đã xác nhận tự động trở thành phiếu bếp có nhãn “Món đặt trước”.
@@ -23,6 +24,7 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Dashboard Admin riêng, thống kê tổng tài khoản, nhân viên, khách hàng và trạng thái hoạt động.
 - Danh sách tài khoản có tìm kiếm, lọc vai trò và không làm lộ mật khẩu.
 - Đăng nhập JWT/RBAC và bảo vệ API nhân viên.
+- Khách hàng tự đăng ký tài khoản bằng họ tên, số điện thoại, email và mật khẩu.
 - Sơ đồ 22 bàn mẫu theo hai tầng, cập nhật trạng thái trực tiếp.
 - Tra cứu bàn theo mã, tên hoặc khu vực; hiển thị khách đang ngồi, số khách và phiếu món cần phục vụ.
 - Phân biệt bàn đang dùng bữa, chờ bếp, cần mang món, cần dọn và bàn trống; tự động làm mới mỗi 10 giây.
@@ -31,7 +33,8 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Nhân viên tạo nhiều phiếu gọi món cho bàn đang phục vụ, tìm kiếm trong 30 món và gửi ghi chú cho bếp.
 - Màn hình bếp riêng cập nhật phiếu theo luồng mới gửi → đang chế biến → sẵn sàng.
 - Nhân viên xác nhận đã mang món; hệ thống chặn kết thúc lượt khách khi còn phiếu món đang mở.
-- Dashboard hiển thị số phiếu món còn mở; màn hình phục vụ chỉ bật “Hoàn tất lượt khách” sau khi mọi phiếu đã phục vụ hoặc hủy.
+- Màn hình thu ngân lập hóa đơn theo món đã phục vụ, áp dụng giảm giá và thanh toán bằng tiền mặt, chuyển khoản, QR hoặc thẻ.
+- Hệ thống chỉ cho hoàn tất lượt khách sau khi mọi phiếu món đã phục vụ hoặc hủy và hóa đơn đã thanh toán.
 - API quản lý menu, kiểm tra sức chứa và đặt bàn.
 - PostgreSQL migration và dữ liệu mẫu cho 2 tầng (120/180 ghế).
 - Swagger UI, health check và xử lý lỗi thống nhất.
@@ -72,6 +75,10 @@ Tài khoản demo:
 
 - Admin: `admin@khamphaviet.vn` / `Admin@123`
 - Nhân viên: `staff@khamphaviet.vn` / `Staff@123`
+- Nhân viên 2: `staff2@khamphaviet.vn` / `Staff2@123`
+- Nhân viên 3: `staff3@khamphaviet.vn` / `Staff3@123`
+- Nhân viên 4: `staff4@khamphaviet.vn` / `Staff4@123`
+- Thu ngân: `cashier@khamphaviet.vn` / `Cashier@123`
 - Khách hàng: `customer@khamphaviet.vn` / `Customer@123`
 - Nhân viên bếp: `kitchen@khamphaviet.vn` / `Kitchen@123`
 
@@ -87,6 +94,7 @@ docs/      kế hoạch và API mẫu
 ## API chính
 
 - `GET /api/v1/menu/items`
+- `POST /api/v1/auth/register`
 - `GET /api/v1/reservations/availability`
 - `POST /api/v1/reservations`
 - `GET /api/v1/reservations/lookup?code=...&phone=...`
@@ -99,5 +107,7 @@ docs/      kế hoạch và API mẫu
 - `GET /api/v1/kitchen/orders` (Admin/Bếp)
 - `PATCH /api/v1/kitchen/orders/{id}/status` (Admin/Bếp)
 - `GET /api/v1/staff/tables/overview`
+- `GET /api/v1/cashier/checkouts` (Admin/Thu ngân)
+- `POST /api/v1/cashier/checkouts/{serviceSessionId}/pay` (Admin/Thu ngân)
 
-> Đây là bộ khung học tập. Trước khi dùng thực tế cần bổ sung thanh toán, notification, audit log và kiểm thử tải.
+> Đây là bộ khung học tập. Trước khi dùng thực tế cần tích hợp cổng thanh toán thật, notification, audit log và kiểm thử tải.

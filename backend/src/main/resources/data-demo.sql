@@ -4,7 +4,7 @@ INSERT INTO menu_items(name, category, price, description, image_url, featured, 
 ('Mẹt nướng Tây Bắc', 'Đồ nướng', 480000, 'Tổng hợp thịt nướng, rau củ và chẩm chéo.', 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE),
 ('Ngọn su su xào tỏi', 'Món hàng ngày', 90000, 'Rau su su Sa Pa xanh giòn, xào nhanh cùng tỏi thơm.', 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
 ('Cá suối nướng', 'Đặc sản', 180000, 'Cá suối nướng than hoa, ăn kèm rau thơm và chẩm chéo.', 'https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE),
-('Thực đơn đoàn 8 khách', 'Thực đơn đoàn', 1200000, 'Mâm cơm 8 khách gồm món khai vị, món chính, rau và canh.', 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE);
+('Cá tầm rang muối', 'Đặc sản', 360000, 'Cá tầm Sa Pa rang muối giòn thơm, dùng cùng rau răm.', 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE);
 
 INSERT INTO menu_items(name, category, price, description, image_url, featured, available) VALUES
 ('Gà đen nướng mật ong', 'Đồ nướng', 320000, 'Gà đen bản nướng mật ong rừng, da giòn và thịt ngọt.', 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE),
@@ -27,7 +27,7 @@ INSERT INTO menu_items(name, category, price, description, image_url, featured, 
 ('Bò cuốn cải mèo', 'Đặc sản', 240000, 'Bò nướng cuốn cải mèo, rau thơm và nước chấm Tây Bắc.', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
 ('Nộm rau dớn', 'Khai vị', 95000, 'Rau dớn trộn lạc rang, chanh và gia vị vùng cao.', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
 ('Nem cá hồi', 'Khai vị', 160000, 'Nem chiên nhân cá hồi Sa Pa, dùng cùng rau sống.', 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
-('Khoai lang mật nướng', 'Khai vị', 70000, 'Khoai mật nướng than, thơm mềm và ngọt tự nhiên.', 'https://images.unsplash.com/photo-1596097635121-14b63b7a0c19?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
-('Thực đơn đoàn 6 khách', 'Thực đơn đoàn', 900000, 'Mâm 6 khách gồm 7 món đặc sản và món tráng miệng.', 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
-('Thực đơn đoàn 10 khách', 'Thực đơn đoàn', 1800000, 'Mâm tiệc 10 khách với cá hồi, lợn bản và rau Sa Pa.', 'https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE),
+('Khoai lang mật nướng', 'Khai vị', 70000, 'Khoai mật nướng than, thơm mềm và ngọt tự nhiên.', 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
+('Gà đen hấp lá chanh', 'Đặc sản', 300000, 'Gà đen bản hấp mềm cùng lá chanh và gia vị vùng cao.', 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
+('Bánh ngô Sa Pa', 'Khai vị', 60000, 'Bánh ngô vàng thơm, áp chảo nhẹ và dùng nóng.', 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
 ('Chè ngô nếp Sa Pa', 'Tráng miệng', 55000, 'Chè ngô nếp dẻo thơm, vị ngọt nhẹ dùng sau bữa ăn.', 'https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE);

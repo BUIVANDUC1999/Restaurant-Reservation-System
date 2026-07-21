@@ -5,6 +5,7 @@ import com.khamphaviet.restaurant.menu.MenuItemRepository;
 import com.khamphaviet.restaurant.table.*;
 import com.khamphaviet.restaurant.service.*;
 import com.khamphaviet.restaurant.order.*;
+import com.khamphaviet.restaurant.billing.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
@@ -28,16 +29,18 @@ public class ReservationService {
     private final ServiceSessionRepository sessionRepository;
     private final DiningOrderRepository diningOrderRepository;
     private final DiningOrderService diningOrderService;
+    private final PaymentRepository paymentRepository;
     private final SecureRandom random = new SecureRandom();
 
     public ReservationService(ReservationRepository repository, ReservationItemRepository itemRepository, MenuItemRepository menuRepository,
                               RestaurantTableRepository tableRepository, ReservationTableAssignmentRepository assignmentRepository,
                               ServiceSessionRepository sessionRepository, DiningOrderRepository diningOrderRepository,
-                              DiningOrderService diningOrderService) {
+                              DiningOrderService diningOrderService, PaymentRepository paymentRepository) {
         this.repository = repository; this.itemRepository = itemRepository; this.menuRepository = menuRepository;
         this.tableRepository = tableRepository; this.assignmentRepository = assignmentRepository; this.sessionRepository = sessionRepository;
         this.diningOrderRepository = diningOrderRepository;
         this.diningOrderService = diningOrderService;
+        this.paymentRepository = paymentRepository;
     }
 
     public ReservationDtos.AvailabilityResponse availability(LocalDate date, String slot, int partySize) {
@@ -154,6 +157,8 @@ public class ReservationService {
         long openOrderCount = diningOrderRepository.countByServiceSessionIdAndStatusIn(session.getId(), OPEN_ORDERS);
         if (openOrderCount > 0)
             throw new BusinessException("Còn " + openOrderCount + " phiếu món chưa phục vụ. Hãy xử lý xong trước khi hoàn tất lượt khách");
+        if (!paymentRepository.existsByServiceSessionIdAndStatus(session.getId(), PaymentStatus.PAID))
+            throw new BusinessException("Hóa đơn chưa được thanh toán");
         session.complete();
         List<ReservationTableAssignment> assignments = assignmentRepository.findByReservationId(id);
         List<RestaurantTable> tables = tableRepository.findAllById(assignments.stream().map(ReservationTableAssignment::getTableId).toList());
@@ -195,10 +200,11 @@ public class ReservationService {
                 table.getName(), table.getFloor(), table.getArea(), table.getSeats(), table.getStatus())).toList();
         Long sessionId = sessionRepository.findByReservationId(reservation.getId()).map(ServiceSession::getId).orElse(null);
         long openOrderCount = sessionId == null ? 0 : diningOrderRepository.countByServiceSessionIdAndStatusIn(sessionId, OPEN_ORDERS);
+        boolean paid = sessionId != null && paymentRepository.existsByServiceSessionIdAndStatus(sessionId, PaymentStatus.PAID);
         return new ReservationDtos.ReservationResponse(reservation.getId(), reservation.getCode(), reservation.getCustomerName(),
                 reservation.getPhone(), reservation.getEmail(), reservation.getReservationDate(), reservation.getTimeSlot(),
                 reservation.getPartySize(), reservation.getPreferredFloor(), reservation.getNote(), reservation.getStatus(),
-                reservation.getCreatedAt(), itemResponses, assignedResponses, sessionId, openOrderCount);
+                reservation.getCreatedAt(), itemResponses, assignedResponses, sessionId, openOrderCount, paid);
     }
 
     private void validateSlot(String slot) {

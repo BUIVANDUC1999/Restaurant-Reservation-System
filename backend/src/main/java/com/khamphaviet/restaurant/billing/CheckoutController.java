@@ -1,0 +1,3 @@
+package com.khamphaviet.restaurant.billing;
+import jakarta.validation.Valid;import org.springframework.web.bind.annotation.*;import java.util.List;
+@RestController @RequestMapping("/api/v1/cashier/checkouts") public class CheckoutController{private final CheckoutService service;public CheckoutController(CheckoutService service){this.service=service;}@GetMapping public List<CheckoutDtos.Checkout> list(){return service.list();}@PostMapping("/{sessionId}/pay")public CheckoutDtos.Checkout pay(@PathVariable Long sessionId,@Valid @RequestBody CheckoutDtos.PayRequest request){return service.pay(sessionId,request);}}

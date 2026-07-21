@@ -1,0 +1,2 @@
+CREATE TABLE payments(id BIGSERIAL PRIMARY KEY,service_session_id BIGINT NOT NULL UNIQUE REFERENCES service_sessions(id),invoice_code VARCHAR(30) NOT NULL UNIQUE,subtotal NUMERIC(12,2) NOT NULL,discount_amount NUMERIC(12,2) NOT NULL,total_amount NUMERIC(12,2) NOT NULL,method VARCHAR(30) NOT NULL,status VARCHAR(30) NOT NULL,paid_at TIMESTAMPTZ NOT NULL);
+CREATE INDEX idx_payments_paid_at ON payments(paid_at);

@@ -7,5 +7,5 @@ import java.util.Optional;
 public interface ServiceSessionRepository extends JpaRepository<ServiceSession, Long> {
     Optional<ServiceSession> findByReservationId(Long reservationId);
     List<ServiceSession> findByReservationIdIn(List<Long> reservationIds);
+    List<ServiceSession> findByStatus(ServiceSessionStatus status);
 }
-

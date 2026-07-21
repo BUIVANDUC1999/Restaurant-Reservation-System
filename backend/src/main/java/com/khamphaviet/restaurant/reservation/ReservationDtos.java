@@ -29,7 +29,7 @@ public final class ReservationDtos {
                                       LocalDate reservationDate, String timeSlot, Integer partySize,
                                       String preferredFloor, String note, ReservationStatus status,
                                       Instant createdAt, List<PreOrderItemResponse> preOrderItems,
-                                      List<AssignedTableResponse> assignedTables, Long serviceSessionId, long openOrderCount) {}
+                                      List<AssignedTableResponse> assignedTables, Long serviceSessionId, long openOrderCount, boolean paid) {}
     public record AvailabilityResponse(boolean available, int remainingSeats, String message) {}
     public record StatusRequest(@NotNull ReservationStatus status) {}
 }
