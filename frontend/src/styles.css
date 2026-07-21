@@ -22,3 +22,4 @@
 .admin-actions{grid-template-columns:repeat(2,1fr)}
 @media(max-width:900px){.admin-actions{grid-template-columns:1fr}}
 .mini-ticket em{font-style:normal;font-size:7px;background:#f5dfae;color:#795318;padding:3px 5px;margin-left:5px}.kitchen-board article>header b i{font-style:normal;color:#fff0c7}
+.service-actions button:disabled,.service-card-actions button:disabled{opacity:.45;cursor:not-allowed}.open-order-warning{color:#a54d42!important}.service-card-actions{display:flex;gap:9px}.service-card-actions .btn{flex:1;font-size:10px;padding:11px}.complete-table{background:#c78d37;color:#173228}.service-block-note{font-size:9px;color:#9b4a40;margin:10px 0 0}

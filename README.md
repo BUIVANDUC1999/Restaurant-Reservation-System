@@ -29,6 +29,7 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Nhân viên tạo nhiều phiếu gọi món cho bàn đang phục vụ, tìm kiếm trong 30 món và gửi ghi chú cho bếp.
 - Màn hình bếp riêng cập nhật phiếu theo luồng mới gửi → đang chế biến → sẵn sàng.
 - Nhân viên xác nhận đã mang món; hệ thống chặn kết thúc lượt khách khi còn phiếu món đang mở.
+- Dashboard hiển thị số phiếu món còn mở; màn hình phục vụ chỉ bật “Hoàn tất lượt khách” sau khi mọi phiếu đã phục vụ hoặc hủy.
 - API quản lý menu, kiểm tra sức chứa và đặt bàn.
 - PostgreSQL migration và dữ liệu mẫu cho 2 tầng (120/180 ghế).
 - Swagger UI, health check và xử lý lỗi thống nhất.

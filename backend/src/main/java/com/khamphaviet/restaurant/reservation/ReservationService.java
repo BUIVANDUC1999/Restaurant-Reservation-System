@@ -18,6 +18,7 @@ import java.util.HashSet;
 public class ReservationService {
     private static final int TOTAL_CAPACITY = 300;
     private static final List<ReservationStatus> OCCUPYING = List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
+    private static final List<DiningOrderStatus> OPEN_ORDERS = List.of(DiningOrderStatus.SUBMITTED, DiningOrderStatus.PREPARING, DiningOrderStatus.READY);
     private static final String CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private final ReservationRepository repository;
     private final ReservationItemRepository itemRepository;
@@ -150,8 +151,9 @@ public class ReservationService {
         Reservation reservation = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy đơn đặt bàn"));
         if (reservation.getStatus() != ReservationStatus.CHECKED_IN) throw new BusinessException("Khách chưa check-in hoặc lượt phục vụ đã kết thúc");
         ServiceSession session = sessionRepository.findByReservationId(id).orElseThrow(() -> new BusinessException("Không tìm thấy phiên phục vụ"));
-        if (diningOrderRepository.existsByServiceSessionIdAndStatusIn(session.getId(), List.of(DiningOrderStatus.SUBMITTED, DiningOrderStatus.PREPARING, DiningOrderStatus.READY)))
-            throw new BusinessException("Cần phục vụ hoặc hủy hết các phiếu món đang mở trước khi hoàn tất");
+        long openOrderCount = diningOrderRepository.countByServiceSessionIdAndStatusIn(session.getId(), OPEN_ORDERS);
+        if (openOrderCount > 0)
+            throw new BusinessException("Còn " + openOrderCount + " phiếu món chưa phục vụ. Hãy xử lý xong trước khi hoàn tất lượt khách");
         session.complete();
         List<ReservationTableAssignment> assignments = assignmentRepository.findByReservationId(id);
         List<RestaurantTable> tables = tableRepository.findAllById(assignments.stream().map(ReservationTableAssignment::getTableId).toList());
@@ -192,10 +194,11 @@ public class ReservationService {
         var assignedResponses = assigned.stream().map(table -> new ReservationDtos.AssignedTableResponse(table.getId(), table.getCode(),
                 table.getName(), table.getFloor(), table.getArea(), table.getSeats(), table.getStatus())).toList();
         Long sessionId = sessionRepository.findByReservationId(reservation.getId()).map(ServiceSession::getId).orElse(null);
+        long openOrderCount = sessionId == null ? 0 : diningOrderRepository.countByServiceSessionIdAndStatusIn(sessionId, OPEN_ORDERS);
         return new ReservationDtos.ReservationResponse(reservation.getId(), reservation.getCode(), reservation.getCustomerName(),
                 reservation.getPhone(), reservation.getEmail(), reservation.getReservationDate(), reservation.getTimeSlot(),
                 reservation.getPartySize(), reservation.getPreferredFloor(), reservation.getNote(), reservation.getStatus(),
-                reservation.getCreatedAt(), itemResponses, assignedResponses, sessionId);
+                reservation.getCreatedAt(), itemResponses, assignedResponses, sessionId, openOrderCount);
     }
 
     private void validateSlot(String slot) {

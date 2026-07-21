@@ -101,3 +101,5 @@ Sau `PREPARING`, bếp chuyển sang `READY`; nhân viên phục vụ xác nhậ
 ```http
 PATCH /api/v1/staff/orders/1/served
 ```
+
+Trường `openOrderCount` trong dữ liệu đặt bàn cho biết số phiếu còn ở trạng thái `SUBMITTED`, `PREPARING` hoặc `READY`. Chỉ khi giá trị này bằng `0`, nhân viên mới có thể hoàn tất lượt khách.

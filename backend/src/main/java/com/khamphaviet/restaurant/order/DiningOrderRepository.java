@@ -7,5 +7,6 @@ public interface DiningOrderRepository extends JpaRepository<DiningOrder, Long> 
     List<DiningOrder> findByServiceSessionIdOrderByCreatedAtDesc(Long serviceSessionId);
     List<DiningOrder> findAllByOrderByCreatedAtDesc();
     boolean existsByServiceSessionIdAndStatusIn(Long serviceSessionId, List<DiningOrderStatus> statuses);
+    long countByServiceSessionIdAndStatusIn(Long serviceSessionId, List<DiningOrderStatus> statuses);
     boolean existsByServiceSessionIdAndSource(Long serviceSessionId, OrderSource source);
 }
