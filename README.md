@@ -15,6 +15,7 @@ Bộ khung đồ án đặt bàn và vận hành nhà hàng, lấy cảm hứng 
 - Banner thương hiệu “Hương vị quê hương”.
 - Danh sách món nổi bật lấy từ API.
 - Thực đơn 30 món Sa Pa/Tây Bắc với tìm kiếm và lọc danh mục; đã thay nhóm thực đơn đoàn bằng các món gọi lẻ.
+- Admin và nhân viên quản lý thực đơn: thêm món, sửa tên/danh mục/giá/mô tả/ảnh, đánh dấu nổi bật và bật–tắt phục vụ.
 - Form đặt bàn với kiểm tra ngày, ca ăn và số lượng khách.
 - Khách chọn số lượng món trước; nhân viên xem và xác nhận lại trên dashboard.
 - Khi check-in, các món chọn trước đã xác nhận tự động trở thành phiếu bếp có nhãn “Món đặt trước”.
@@ -105,6 +106,10 @@ docs/      kế hoạch và API mẫu
 ## API chính
 
 - `GET /api/v1/menu/items`
+- `GET /api/v1/staff/menu/items` (Admin/Nhân viên, gồm cả món đang ẩn)
+- `POST /api/v1/staff/menu/items` (thêm món)
+- `PUT /api/v1/staff/menu/items/{id}` (sửa món)
+- `PATCH /api/v1/staff/menu/items/{id}/availability` (bật/tắt món)
 - `POST /api/v1/auth/register`
 - `GET /api/v1/reservations/availability`
 - `POST /api/v1/reservations`

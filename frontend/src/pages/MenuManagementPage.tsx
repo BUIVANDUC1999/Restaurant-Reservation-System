@@ -1,0 +1,32 @@
+import {Check, Eye, EyeOff, Image as ImageIcon, Pencil, Plus, Search, Star, UtensilsCrossed, X} from 'lucide-react';
+import {FormEvent, useEffect, useMemo, useState} from 'react';
+import {api} from '../api';
+import type {MenuItem} from '../types';
+
+type FormState={name:string;category:string;price:string;description:string;imageUrl:string;featured:boolean;available:boolean};
+const empty:FormState={name:'',category:'',price:'',description:'',imageUrl:'',featured:false,available:true};
+
+export default function MenuManagementPage(){
+  const[items,setItems]=useState<MenuItem[]>([]);const[search,setSearch]=useState('');const[status,setStatus]=useState('ALL');
+  const[editing,setEditing]=useState<MenuItem>();const[form,setForm]=useState<FormState>(empty);const[open,setOpen]=useState(false);
+  const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[success,setSuccess]=useState('');
+  const load=()=>api.staffMenu().then(setItems).catch(e=>setError(e instanceof Error?e.message:'Không tải được thực đơn'));
+  useEffect(()=>{void load()},[]);
+  const categories=useMemo(()=>[...new Set(items.map(item=>item.category))].sort(),[items]);
+  const shown=useMemo(()=>items.filter(item=>{
+    const keyword=search.trim().toLowerCase();const matches=!keyword||item.name.toLowerCase().includes(keyword)||item.category.toLowerCase().includes(keyword);
+    return matches&&(status==='ALL'||status==='AVAILABLE'&&item.available||status==='HIDDEN'&&!item.available);
+  }),[items,search,status]);
+  function create(){setEditing(undefined);setForm(empty);setError('');setSuccess('');setOpen(true)}
+  function edit(item:MenuItem){setEditing(item);setForm({name:item.name,category:item.category,price:String(item.price),description:item.description||'',imageUrl:item.imageUrl||'',featured:item.featured,available:item.available});setError('');setSuccess('');setOpen(true)}
+  async function submit(event:FormEvent){event.preventDefault();setBusy(true);setError('');try{const body={...form,price:Number(form.price)};if(editing)await api.updateMenuItem(editing.id,body);else await api.createMenuItem(body);await load();setSuccess(editing?'Đã cập nhật món ăn':'Đã thêm món ăn mới');setOpen(false)}catch(e){setError(e instanceof Error?e.message:'Không lưu được món ăn')}finally{setBusy(false)}}
+  async function toggle(item:MenuItem){setBusy(true);setError('');try{await api.setMenuAvailability(item.id,!item.available);await load()}catch(e){setError(e instanceof Error?e.message:'Không đổi được trạng thái món')}finally{setBusy(false)}}
+  return <section className="page-section container menu-admin-page">
+    <div className="menu-admin-heading"><div><p className="eyebrow dark">KHU VỰC NHÂN VIÊN</p><h1>Quản lý thực đơn</h1><p className="page-lead">Thêm món mới, cập nhật giá, hình ảnh và trạng thái phục vụ.</p></div><button className="btn btn-green" onClick={create}><Plus/> Thêm món</button></div>
+    {error&&<p className="error">{error}</p>}{success&&<p className="success-message"><Check/> {success}</p>}
+    <div className="menu-admin-summary"><span><UtensilsCrossed/><b>{items.length}</b> tổng số món</span><span><Eye/><b>{items.filter(x=>x.available).length}</b> đang phục vụ</span><span><EyeOff/><b>{items.filter(x=>!x.available).length}</b> đang ẩn</span></div>
+    <div className="menu-admin-tools"><label><Search/><input aria-label="Tìm món ăn" placeholder="Tìm tên món hoặc danh mục..." value={search} onChange={e=>setSearch(e.target.value)}/></label><div className="filters">{([['ALL','Tất cả'],['AVAILABLE','Đang phục vụ'],['HIDDEN','Đang ẩn']] as const).map(([value,label])=><button className={status===value?'active':''} onClick={()=>setStatus(value)} key={value}>{label}</button>)}</div></div>
+    <div className="managed-menu-grid">{shown.map(item=><article className={!item.available?'hidden-item':''} key={item.id}><div className="managed-dish-image">{item.imageUrl?<img src={item.imageUrl} alt={item.name}/>:<ImageIcon/>}{item.featured&&<span><Star/> Nổi bật</span>}</div><div className="managed-dish-body"><small>{item.category}</small><h2>{item.name}</h2><p>{item.description||'Chưa có mô tả.'}</p><strong>{Number(item.price).toLocaleString('vi-VN')}đ</strong><i className={item.available?'available':'hidden'}>{item.available?'Đang phục vụ':'Đang ẩn'}</i></div><footer><button onClick={()=>edit(item)}><Pencil/> Sửa</button><button disabled={busy} onClick={()=>toggle(item)}>{item.available?<><EyeOff/> Ẩn món</>:<><Eye/> Bật món</>}</button></footer></article>)}{!shown.length&&<div className="empty"><UtensilsCrossed/><h2>Không tìm thấy món phù hợp</h2></div>}</div>
+    {open&&<div className="menu-editor-backdrop"><form className="menu-editor" onSubmit={submit}><header><div><p className="eyebrow dark">{editing?'CHỈNH SỬA MÓN':'THÊM MÓN MỚI'}</p><h2>{editing?.name||'Thông tin món ăn'}</h2></div><button type="button" aria-label="Đóng" onClick={()=>setOpen(false)}><X/></button></header><div className="menu-editor-grid"><label>Tên món<input value={form.name} maxLength={160} onChange={e=>setForm(v=>({...v,name:e.target.value}))} required/></label><label>Danh mục<input list="menu-categories" value={form.category} maxLength={80} onChange={e=>setForm(v=>({...v,category:e.target.value}))} required/><datalist id="menu-categories">{categories.map(category=><option value={category} key={category}/>)}</datalist></label><label>Giá bán (VNĐ)<input type="number" min="0" step="1000" value={form.price} onChange={e=>setForm(v=>({...v,price:e.target.value}))} required/></label><label className="wide">Đường dẫn hình ảnh<input type="url" value={form.imageUrl} maxLength={600} onChange={e=>setForm(v=>({...v,imageUrl:e.target.value}))} placeholder="https://..."/></label><label className="wide">Mô tả<textarea value={form.description} maxLength={600} onChange={e=>setForm(v=>({...v,description:e.target.value}))}/></label><label className="check"><input type="checkbox" checked={form.featured} onChange={e=>setForm(v=>({...v,featured:e.target.checked}))}/> Món nổi bật</label><label className="check"><input type="checkbox" checked={form.available} onChange={e=>setForm(v=>({...v,available:e.target.checked}))}/> Đang phục vụ</label></div>{form.imageUrl&&<div className="menu-image-preview"><img src={form.imageUrl} alt="Xem trước"/><span>Xem trước hình ảnh</span></div>}<button className="btn btn-green" disabled={busy}><Check/> {busy?'Đang lưu...':'Lưu món ăn'}</button></form></div>}
+  </section>;
+}

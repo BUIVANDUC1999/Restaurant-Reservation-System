@@ -1,5 +1,41 @@
 # API examples
 
+## Quản lý món ăn
+
+Admin hoặc nhân viên lấy toàn bộ thực đơn, bao gồm món đang ẩn:
+
+```http
+GET /api/v1/staff/menu/items
+Authorization: Bearer <staff-token>
+```
+
+Thêm hoặc sửa món sử dụng cùng cấu trúc dữ liệu:
+
+```http
+POST /api/v1/staff/menu/items
+Authorization: Bearer <staff-token>
+Content-Type: application/json
+
+{
+  "name": "Cá tầm rang muối",
+  "category": "Đặc sản",
+  "price": 360000,
+  "description": "Cá tầm Sa Pa rang muối giòn thơm.",
+  "imageUrl": "https://example.com/ca-tam.jpg",
+  "featured": true,
+  "available": true
+}
+```
+
+```http
+PUT /api/v1/staff/menu/items/1
+PATCH /api/v1/staff/menu/items/1/availability
+
+{ "available": false }
+```
+
+Món bị tắt sẽ biến mất khỏi thực đơn công khai và màn hình gọi món mới nhưng vẫn được giữ trong database để bảo toàn lịch sử đơn hàng.
+
 ## Đăng ký tài khoản khách hàng
 
 ```http
