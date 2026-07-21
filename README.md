@@ -43,6 +43,15 @@ npm run dev
 
 PostgreSQL mặc định: `localhost:5432/restaurant`, tài khoản `restaurant`, mật khẩu `restaurant`.
 
+### Chạy demo không cần PostgreSQL
+
+```bash
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=demo
+```
+
+Chế độ `demo` sử dụng H2 trong bộ nhớ và tự nạp dữ liệu món mẫu.
+
 ## Cấu trúc
 
 ```text
@@ -62,4 +71,3 @@ docs/      kế hoạch và API mẫu
 - `PATCH /api/v1/staff/reservations/{id}/status`
 
 > Đây là bộ khung học tập. Trước khi dùng thực tế cần bổ sung xác thực JWT/RBAC, thanh toán, notification, audit log và kiểm thử tải.
-
