@@ -9,6 +9,7 @@ export const api={
   lookup:(code:string,phone:string)=>request<Reservation>(`/reservations/lookup?code=${encodeURIComponent(code)}&phone=${encodeURIComponent(phone)}`),
   staffReservations:()=>request<Reservation[]>('/staff/reservations'),
   updateStatus:(id:number,status:string)=>request<Reservation>(`/staff/reservations/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
+  confirmPreOrder:(id:number)=>request<Reservation>(`/staff/reservations/${id}/preorder/confirm`,{method:'POST'}),
   tables:()=>request<RestaurantTable[]>('/staff/tables'),
   updateTableStatus:(id:number,status:string)=>request<RestaurantTable>(`/staff/tables/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
   createTable:(body:unknown)=>request<RestaurantTable>('/staff/tables',{method:'POST',body:JSON.stringify(body)})

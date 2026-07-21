@@ -1,10 +1,14 @@
-INSERT INTO menu_items(name, category, price, description, image_url, featured, available) VALUES
-('Thắng cố A Quỳnh', 'Đặc sản', 220000, 'Hương vị đặc trưng vùng cao, nấu cùng thảo quả và gia vị Tây Bắc.', 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE),
-('Lẩu cá hồi Sa Pa', 'Lẩu', 650000, 'Cá hồi tươi, nước lẩu chua cay và rau bản địa theo mùa.', 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE),
-('Mẹt nướng Tây Bắc', 'Đồ nướng', 480000, 'Tổng hợp thịt nướng, rau củ và chẩm chéo.', 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE),
-('Ngọn su su xào tỏi', 'Món hàng ngày', 90000, 'Rau su su Sa Pa xanh giòn, xào nhanh cùng tỏi thơm.', 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
-('Cá suối nướng', 'Đặc sản', 180000, 'Cá suối nướng than hoa, ăn kèm rau thơm và chẩm chéo.', 'https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE),
-('Thực đơn đoàn 8 khách', 'Thực đơn đoàn', 1200000, 'Mâm cơm 8 khách gồm món khai vị, món chính, rau và canh.', 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE);
+CREATE TABLE reservation_items (
+    id BIGSERIAL PRIMARY KEY,
+    reservation_id BIGINT NOT NULL REFERENCES reservations(id),
+    menu_item_id BIGINT NOT NULL REFERENCES menu_items(id),
+    item_name_snapshot VARCHAR(160) NOT NULL,
+    unit_price NUMERIC(12,2) NOT NULL CHECK (unit_price >= 0),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    status VARCHAR(30) NOT NULL DEFAULT 'REQUESTED'
+);
+
+CREATE INDEX idx_reservation_items_reservation ON reservation_items(reservation_id);
 
 INSERT INTO menu_items(name, category, price, description, image_url, featured, available) VALUES
 ('Gà đen nướng mật ong', 'Đồ nướng', 320000, 'Gà đen bản nướng mật ong rừng, da giòn và thịt ngọt.', 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE),
@@ -31,3 +35,4 @@ INSERT INTO menu_items(name, category, price, description, image_url, featured, 
 ('Thực đơn đoàn 6 khách', 'Thực đơn đoàn', 900000, 'Mâm 6 khách gồm 7 món đặc sản và món tráng miệng.', 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
 ('Thực đơn đoàn 10 khách', 'Thực đơn đoàn', 1800000, 'Mâm tiệc 10 khách với cá hồi, lợn bản và rau Sa Pa.', 'https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=80', TRUE, TRUE),
 ('Chè ngô nếp Sa Pa', 'Tráng miệng', 55000, 'Chè ngô nếp dẻo thơm, vị ngọt nhẹ dùng sau bữa ăn.', 'https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE);
+

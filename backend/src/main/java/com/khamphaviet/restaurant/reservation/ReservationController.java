@@ -18,9 +18,9 @@ public class ReservationController {
             @RequestParam String timeSlot, @RequestParam int partySize) {
         return service.availability(date, timeSlot, partySize);
     }
-    @PostMapping("/reservations") public Reservation create(@Valid @RequestBody ReservationDtos.CreateRequest request) { return service.create(request); }
-    @GetMapping("/reservations/lookup") public Reservation lookup(@RequestParam String code, @RequestParam String phone) { return service.lookup(code, phone); }
-    @GetMapping("/staff/reservations") public List<Reservation> list() { return service.list(); }
+    @PostMapping("/reservations") public ReservationDtos.ReservationResponse create(@Valid @RequestBody ReservationDtos.CreateRequest request) { return service.create(request); }
+    @GetMapping("/reservations/lookup") public ReservationDtos.ReservationResponse lookup(@RequestParam String code, @RequestParam String phone) { return service.lookup(code, phone); }
+    @GetMapping("/staff/reservations") public List<ReservationDtos.ReservationResponse> list() { return service.list(); }
     @PatchMapping("/staff/reservations/{id}/status") public Reservation status(@PathVariable Long id, @Valid @RequestBody ReservationDtos.StatusRequest request) { return service.updateStatus(id, request.status()); }
+    @PostMapping("/staff/reservations/{id}/preorder/confirm") public ReservationDtos.ReservationResponse confirmPreOrder(@PathVariable Long id) { return service.confirmPreOrder(id); }
 }
-

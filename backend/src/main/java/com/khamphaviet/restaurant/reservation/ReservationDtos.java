@@ -2,6 +2,9 @@ package com.khamphaviet.restaurant.reservation;
 
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
+import java.time.Instant;
+import java.math.BigDecimal;
+import java.util.List;
 
 public final class ReservationDtos {
     private ReservationDtos() {}
@@ -13,8 +16,15 @@ public final class ReservationDtos {
             @NotBlank @Pattern(regexp = "LUNCH|DINNER") String timeSlot,
             @NotNull @Min(1) @Max(300) Integer partySize,
             String preferredFloor,
-            @Size(max = 1000) String note) {}
+            @Size(max = 1000) String note,
+            @Size(max = 30) List<PreOrderItemRequest> preOrderItems) {}
+    public record PreOrderItemRequest(@NotNull Long menuItemId, @NotNull @Min(1) @Max(20) Integer quantity) {}
+    public record PreOrderItemResponse(Long id, Long menuItemId, String itemName, BigDecimal unitPrice,
+                                       Integer quantity, PreOrderStatus status, BigDecimal lineTotal) {}
+    public record ReservationResponse(Long id, String code, String customerName, String phone, String email,
+                                      LocalDate reservationDate, String timeSlot, Integer partySize,
+                                      String preferredFloor, String note, ReservationStatus status,
+                                      Instant createdAt, List<PreOrderItemResponse> preOrderItems) {}
     public record AvailabilityResponse(boolean available, int remainingSeats, String message) {}
     public record StatusRequest(@NotNull ReservationStatus status) {}
 }
-

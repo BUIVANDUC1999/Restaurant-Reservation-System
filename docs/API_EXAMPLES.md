@@ -14,7 +14,11 @@ Content-Type: application/json
   "timeSlot": "DINNER",
   "partySize": 6,
   "preferredFloor": "FLOOR_1",
-  "note": "Bàn sinh nhật, có trẻ em"
+  "note": "Bàn sinh nhật, có trẻ em",
+  "preOrderItems": [
+    {"menuItemId": 1, "quantity": 2},
+    {"menuItemId": 2, "quantity": 1}
+  ]
 }
 ```
 
@@ -33,3 +37,11 @@ Content-Type: application/json
 {"status":"CONFIRMED"}
 ```
 
+## Nhân viên xác nhận món khách chọn trước
+
+```http
+POST /api/v1/staff/reservations/1/preorder/confirm
+Authorization: Bearer <access-token>
+```
+
+Món mới chọn có trạng thái `REQUESTED`; sau khi nhân viên trao đổi với khách và gọi API trên, trạng thái chuyển thành `CONFIRMED`.
