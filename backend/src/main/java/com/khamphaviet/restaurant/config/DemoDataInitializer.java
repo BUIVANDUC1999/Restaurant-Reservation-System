@@ -22,7 +22,6 @@ public class DemoDataInitializer implements ApplicationRunner {
         createUserIfMissing("Giàng A Páo", "staff3@khamphaviet.vn", "Staff3@123", UserRole.STAFF);
         createUserIfMissing("Lê Thị Hương", "staff4@khamphaviet.vn", "Staff4@123", UserRole.STAFF);
         createUserIfMissing("Lò Thị Mai", "kitchen@khamphaviet.vn", "Kitchen@123", UserRole.KITCHEN);
-        createUserIfMissing("Phạm Thu Ngân", "cashier@khamphaviet.vn", "Cashier@123", UserRole.CASHIER);
         createUserIfMissing("Trần Thu Hà", "customer@khamphaviet.vn", "Customer@123", UserRole.CUSTOMER);
         if (tables.count() == 0) {
             for (int i = 1; i <= 10; i++) tables.save(new RestaurantTable("T1-" + String.format("%02d", i), "Bàn " + i, "Tầng 1", i <= 4 ? "Cửa sổ" : "Sảnh chính", i % 3 == 0 ? 8 : 6));

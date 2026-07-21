@@ -16,7 +16,7 @@ public class AdminUserController {
     @GetMapping("/stats")
     public UserStats stats() {
         return new UserStats(users.count(), users.countByRole(UserRole.ADMIN),
-                users.countByRoleIn(List.of(UserRole.STAFF, UserRole.KITCHEN, UserRole.CASHIER)),
+                users.countByRoleIn(List.of(UserRole.STAFF, UserRole.KITCHEN)),
                 users.countByRole(UserRole.CUSTOMER), users.countByActiveTrue());
     }
 

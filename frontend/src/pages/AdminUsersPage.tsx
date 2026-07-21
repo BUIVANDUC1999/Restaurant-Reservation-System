@@ -3,7 +3,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {api} from '../api';
 import type {AuthUser,UserStats,UserSummary} from '../types';
 
-const labels:Record<AuthUser['role'],string>={ADMIN:'Quản trị viên',STAFF:'Nhân viên phục vụ',KITCHEN:'Nhân viên bếp',CASHIER:'Thu ngân',CUSTOMER:'Khách hàng'};
+const labels:Record<AuthUser['role'],string>={ADMIN:'Quản trị viên',STAFF:'Nhân viên phục vụ',KITCHEN:'Nhân viên bếp',CUSTOMER:'Khách hàng'};
 type Filter='ALL'|'EMPLOYEE'|'CUSTOMER'|'ADMIN';
 
 export default function AdminUsersPage(){
@@ -11,7 +11,7 @@ export default function AdminUsersPage(){
   const[filter,setFilter]=useState<Filter>('ALL');const[search,setSearch]=useState('');const[error,setError]=useState('');
   useEffect(()=>{Promise.all([api.adminUsers(),api.adminUserStats()]).then(([list,data])=>{setUsers(list);setStats(data)}).catch(err=>setError(err instanceof Error?err.message:'Không tải được tài khoản'))},[]);
   const filtered=useMemo(()=>users.filter(user=>{
-    const byRole=filter==='ALL'||filter==='CUSTOMER'&&user.role==='CUSTOMER'||filter==='ADMIN'&&user.role==='ADMIN'||filter==='EMPLOYEE'&&['STAFF','KITCHEN','CASHIER'].includes(user.role);
+    const byRole=filter==='ALL'||filter==='CUSTOMER'&&user.role==='CUSTOMER'||filter==='ADMIN'&&user.role==='ADMIN'||filter==='EMPLOYEE'&&['STAFF','KITCHEN'].includes(user.role);
     const keyword=search.trim().toLowerCase();return byRole&&(!keyword||user.fullName.toLowerCase().includes(keyword)||user.email.toLowerCase().includes(keyword));
   }),[users,filter,search]);
   return <section className="page-section container admin-page">

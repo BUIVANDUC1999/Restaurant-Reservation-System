@@ -26,6 +26,6 @@ export const api={
   cancelOrder:(id:number)=>request<DiningOrder>(`/staff/orders/${id}/cancel`,{method:'PATCH'}),
   kitchenOrders:()=>request<DiningOrder[]>('/kitchen/orders'),
   updateKitchenOrder:(id:number,status:'PREPARING'|'READY')=>request<DiningOrder>(`/kitchen/orders/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
-  checkouts:()=>request<Checkout[]>('/cashier/checkouts'),
-  payCheckout:(sessionId:number,body:unknown)=>request<Checkout>(`/cashier/checkouts/${sessionId}/pay`,{method:'POST',body:JSON.stringify(body)})
+  checkouts:()=>request<Checkout[]>('/staff/checkouts'),
+  payCheckout:(sessionId:number,body:unknown)=>request<Checkout>(`/staff/checkouts/${sessionId}/pay`,{method:'POST',body:JSON.stringify(body)})
 }

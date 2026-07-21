@@ -122,18 +122,18 @@ Trường `openOrderCount` trong dữ liệu đặt bàn cho biết số phiếu
 
 ## Lập hóa đơn và thanh toán
 
-Thu ngân lấy các phiên phục vụ đang hoạt động:
+Nhân viên lấy các phiên phục vụ đang hoạt động:
 
 ```http
-GET /api/v1/cashier/checkouts
-Authorization: Bearer <cashier-token>
+GET /api/v1/staff/checkouts
+Authorization: Bearer <staff-token>
 ```
 
 Thanh toán hóa đơn theo phiên phục vụ:
 
 ```http
-POST /api/v1/cashier/checkouts/1/pay
-Authorization: Bearer <cashier-token>
+POST /api/v1/staff/checkouts/1/pay
+Authorization: Bearer <staff-token>
 Content-Type: application/json
 
 {
