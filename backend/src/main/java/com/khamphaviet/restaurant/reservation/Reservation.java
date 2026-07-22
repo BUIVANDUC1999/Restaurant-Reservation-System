@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class Reservation {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @Version private Long version;
     @Column(nullable = false, unique = true, length = 16) private String code;
     @Column(nullable = false) private String customerName;
     @Column(nullable = false, length = 20) private String phone;

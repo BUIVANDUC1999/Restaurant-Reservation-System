@@ -8,4 +8,5 @@ public interface ServiceSessionRepository extends JpaRepository<ServiceSession, 
     Optional<ServiceSession> findByReservationId(Long reservationId);
     List<ServiceSession> findByReservationIdIn(List<Long> reservationIds);
     List<ServiceSession> findByStatus(ServiceSessionStatus status);
+    long countByStatus(ServiceSessionStatus status);
 }

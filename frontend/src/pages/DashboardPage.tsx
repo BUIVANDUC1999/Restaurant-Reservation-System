@@ -1,4 +1,4 @@
-import{useEffect,useMemo,useState}from'react';
+import{useEffect,useState}from'react';
 import{Armchair,Check,CheckCircle2,ChevronDown,LogIn,ShoppingBasket,Sparkles,Users,X}from'lucide-react';
 import{api}from'../api';
 import type{Reservation,RestaurantTable}from'../types';

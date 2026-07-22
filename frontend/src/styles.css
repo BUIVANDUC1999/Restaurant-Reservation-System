@@ -20,6 +20,7 @@
 @media(max-width:750px){.service-cards,.kitchen-board,.order-menu{grid-template-columns:1fr}.order-modal{inset:10px;padding:17px}.order-total{grid-template-columns:1fr auto}.order-total button{grid-column:1/-1}.kitchen-heading{align-items:flex-start;flex-direction:column}.kitchen-stats{flex-direction:column}.service-page>h1,.kitchen-heading h1{font-size:42px}}
 .service-actions .order-link{background:#e3efe9;color:#245b47;padding:8px 9px;font-size:9px;display:flex;align-items:center;gap:5px}.service-actions .order-link svg{width:13px}
 .admin-actions{grid-template-columns:repeat(2,1fr)}
+.admin-section-title{font:600 30px 'Playfair Display';color:var(--green);margin:44px 0 16px}.operations-stats article:nth-child(3),.operations-stats article:nth-child(4){border-left-color:#3c9d72}.operations-stats article:nth-child(3) b,.operations-stats article:nth-child(4) b{font-size:22px}
 @media(max-width:900px){.admin-actions{grid-template-columns:1fr}}
 .mini-ticket em{font-style:normal;font-size:7px;background:#f5dfae;color:#795318;padding:3px 5px;margin-left:5px}.kitchen-board article>header b i{font-style:normal;color:#fff0c7}
 .service-actions button:disabled,.service-card-actions button:disabled{opacity:.45;cursor:not-allowed}.open-order-warning{color:#a54d42!important}.service-card-actions{display:flex;gap:9px}.service-card-actions .btn{flex:1;font-size:10px;padding:11px}.complete-table{background:#c78d37;color:#173228}.service-block-note{font-size:9px;color:#9b4a40;margin:10px 0 0}

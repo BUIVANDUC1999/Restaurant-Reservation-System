@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import{createContext,useContext,useState,type ReactNode}from'react';import type{AuthUser}from'./types'
 type AuthContextValue={user:AuthUser|null;save:(user:AuthUser)=>void;logout:()=>void}
 const AuthContext=createContext<AuthContextValue|null>(null)

@@ -4,6 +4,7 @@ export type AssignedTable={id:number;code:string;name:string;floor:string;area:s
 export type Reservation={id:number;code:string;customerName:string;phone:string;email?:string;reservationDate:string;timeSlot:'LUNCH'|'DINNER';partySize:number;preferredFloor?:string;note?:string;status:string;createdAt:string;preOrderItems:PreOrderItem[];assignedTables:AssignedTable[];serviceSessionId?:number;openOrderCount:number;paid:boolean}
 export type AuthUser={accessToken:string;id:number;fullName:string;email:string;role:'ADMIN'|'STAFF'|'KITCHEN'|'CUSTOMER'}
 export type UserStats={totalCount:number;adminCount:number;employeeCount:number;customerCount:number;activeCount:number}
+export type OperationsReport={reservationsToday:number;pendingReservations:number;activeSessions:number;invoicesThisMonth:number;revenueToday:number;revenueThisMonth:number}
 export type UserSummary={id:number;fullName:string;email:string;role:AuthUser['role'];active:boolean;createdAt:string}
 export type RestaurantTable={id:number;code:string;name:string;floor:string;area:string;seats:number;status:'AVAILABLE'|'RESERVED'|'OCCUPIED'|'NEEDS_CLEANING'|'INACTIVE';active:boolean}
 export type TableOverview=RestaurantTable&{serviceState:'EMPTY'|'RESERVED'|'DINING'|'WAITING_KITCHEN'|'NEEDS_SERVING'|'NEEDS_CLEANING'|'INACTIVE';reservationId?:number;reservationCode?:string;customerName?:string;customerPhone?:string;partySize?:number;serviceSessionId?:number;openOrderCount:number;readyOrderCount:number}

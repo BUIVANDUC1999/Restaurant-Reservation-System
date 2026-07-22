@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class RestaurantTable {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @Version private Long version;
     @Column(nullable = false, unique = true) private String code;
     @Column(nullable = false) private String name;
     @Column(nullable = false) private String floor;

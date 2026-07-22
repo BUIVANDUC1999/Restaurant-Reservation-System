@@ -8,6 +8,7 @@ import com.khamphaviet.restaurant.order.*;
 import com.khamphaviet.restaurant.billing.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.List;
@@ -53,7 +54,7 @@ public class ReservationService {
                 remaining >= partySize ? "Còn chỗ phù hợp" : "Khung giờ này không đủ chỗ");
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public ReservationDtos.ReservationResponse create(ReservationDtos.CreateRequest request) {
         var available = availability(request.reservationDate(), request.timeSlot(), request.partySize());
         if (!available.available()) throw new BusinessException("Không còn đủ chỗ cho số khách đã chọn");
