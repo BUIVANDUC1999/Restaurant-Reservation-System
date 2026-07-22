@@ -76,11 +76,30 @@ class RestaurantApiIntegrationTests {
         mvc.perform(post("/api/v1/reservations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(fullCapacity)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.depositAmount").value(60000000))
+                .andExpect(jsonPath("$.depositStatus").value("PENDING"));
         mvc.perform(post("/api/v1/reservations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(oneMoreGuest)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void preorderDepositIsTenPercentOfSelectedFood() throws Exception {
+        var request = Map.of(
+                "customerName", "Khach dat mon",
+                "phone", "0912345678",
+                "reservationDate", LocalDate.now().plusYears(4).toString(),
+                "timeSlot", "LUNCH",
+                "partySize", 2,
+                "preOrderItems", java.util.List.of(Map.of("menuItemId", 1, "quantity", 2))
+        );
+        mvc.perform(post("/api/v1/reservations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.depositAmount").value(44000));
     }
 
     @Test

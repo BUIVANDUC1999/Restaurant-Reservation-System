@@ -4,7 +4,7 @@ public final class CheckoutDtos{private CheckoutDtos(){}
  public record PayRequest(@NotNull PaymentMethod method,@NotNull @DecimalMin("0") BigDecimal discountAmount){}
  public record PayPalRequest(@NotNull @DecimalMin("0") BigDecimal discountAmount){}
  public record PayPalConfig(boolean enabled,String clientId,String currency,BigDecimal vndPerUsd){}
- public record PayPalOrder(String orderId,String status,String currency,BigDecimal amount){}
+ public record PayPalOrder(String orderId,String status,String currency,BigDecimal amount,String approvalUrl){}
  public record Line(String itemName,int quantity,BigDecimal unitPrice,BigDecimal lineTotal){}
  public record Checkout(Long serviceSessionId,Long reservationId,String reservationCode,String customerName,List<String> tableCodes,int partySize,List<Line> items,BigDecimal subtotal,long openOrderCount,boolean paid,Long paymentId,String invoiceCode,BigDecimal discountAmount,BigDecimal totalAmount,PaymentMethod paymentMethod,Instant paidAt){}
 }

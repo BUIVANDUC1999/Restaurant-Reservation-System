@@ -1,4 +1,4 @@
-import type {AuthUser,Checkout,DiningOrder,MenuItem,OperationsReport,PayPalConfig,PayPalOrder,Reservation,RestaurantTable,TableOverview,UserStats,UserSummary} from './types'
+import type {AuthUser,Checkout,DepositQr,DiningOrder,MenuItem,OperationsReport,PayPalConfig,PayPalOrder,Reservation,RestaurantTable,TableOverview,UserStats,UserSummary} from './types'
 const BASE=import.meta.env.VITE_API_URL||'/api/v1'
 const token=()=>{try{return JSON.parse(localStorage.getItem('restaurant_auth')||'null')?.accessToken}catch{return null}}
 async function request<T>(path:string,options?:RequestInit):Promise<T>{const auth=token();const response=await fetch(`${BASE}${path}`,{headers:{'Content-Type':'application/json',...(auth?{Authorization:`Bearer ${auth}`}:{}) ,...options?.headers},...options});const text=await response.text();let data:null|Record<string,unknown>=null;try{data=text?JSON.parse(text):null}catch{data=null}if(!response.ok)throw new Error(typeof data?.message==='string'?data.message:(response.status===401||response.status===403?'Phiên đăng nhập không hợp lệ':'Có lỗi xảy ra'));return data as T}
@@ -15,6 +15,11 @@ export const api={
   setMenuAvailability:(id:number,available:boolean)=>request<MenuItem>(`/staff/menu/items/${id}/availability`,{method:'PATCH',body:JSON.stringify({available})}),
   createReservation:(body:unknown)=>request<Reservation>('/reservations',{method:'POST',body:JSON.stringify(body)}),
   lookup:(code:string,phone:string)=>request<Reservation>(`/reservations/lookup?code=${encodeURIComponent(code)}&phone=${encodeURIComponent(phone)}`),
+  depositQr:(code:string,phone:string)=>request<DepositQr>(`/reservations/${encodeURIComponent(code)}/deposit/qr`,{method:'POST',body:JSON.stringify({phone})}),
+  confirmDepositQr:(code:string,phone:string)=>request<unknown>(`/reservations/${encodeURIComponent(code)}/deposit/qr/confirm`,{method:'POST',body:JSON.stringify({phone})}),
+  depositPayPalConfig:(code:string)=>request<PayPalConfig>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/config`),
+  createDepositPayPal:(code:string,phone:string)=>request<PayPalOrder>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/orders`,{method:'POST',body:JSON.stringify({phone})}),
+  captureDepositPayPal:(code:string,phone:string,orderId:string)=>request<unknown>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/orders/capture`,{method:'POST',body:JSON.stringify({phone,orderId})}),
   staffReservations:()=>request<Reservation[]>('/staff/reservations'),
   updateStatus:(id:number,status:string)=>request<Reservation>(`/staff/reservations/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
   confirmPreOrder:(id:number)=>request<Reservation>(`/staff/reservations/${id}/preorder/confirm`,{method:'POST'}),

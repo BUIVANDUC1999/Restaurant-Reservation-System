@@ -6,6 +6,7 @@ import com.khamphaviet.restaurant.table.*;
 import com.khamphaviet.restaurant.service.*;
 import com.khamphaviet.restaurant.order.*;
 import com.khamphaviet.restaurant.billing.*;
+import com.khamphaviet.restaurant.deposit.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
@@ -31,17 +32,19 @@ public class ReservationService {
     private final DiningOrderRepository diningOrderRepository;
     private final DiningOrderService diningOrderService;
     private final PaymentRepository paymentRepository;
+    private final ReservationDepositRepository depositRepository;
     private final SecureRandom random = new SecureRandom();
 
     public ReservationService(ReservationRepository repository, ReservationItemRepository itemRepository, MenuItemRepository menuRepository,
                               RestaurantTableRepository tableRepository, ReservationTableAssignmentRepository assignmentRepository,
                               ServiceSessionRepository sessionRepository, DiningOrderRepository diningOrderRepository,
-                              DiningOrderService diningOrderService, PaymentRepository paymentRepository) {
+                              DiningOrderService diningOrderService, PaymentRepository paymentRepository, ReservationDepositRepository depositRepository) {
         this.repository = repository; this.itemRepository = itemRepository; this.menuRepository = menuRepository;
         this.tableRepository = tableRepository; this.assignmentRepository = assignmentRepository; this.sessionRepository = sessionRepository;
         this.diningOrderRepository = diningOrderRepository;
         this.diningOrderService = diningOrderService;
         this.paymentRepository = paymentRepository;
+        this.depositRepository = depositRepository;
     }
 
     public ReservationDtos.AvailabilityResponse availability(LocalDate date, String slot, int partySize) {
@@ -62,7 +65,13 @@ public class ReservationService {
                 request.email(), request.reservationDate(), request.timeSlot(), request.partySize(),
                 request.preferredFloor(), request.note()));
         savePreOrderItems(reservation.getId(), request.preOrderItems());
-        return response(reservation, itemRepository.findByReservationIdOrderByIdAsc(reservation.getId()));
+        List<ReservationItem> savedItems=itemRepository.findByReservationIdOrderByIdAsc(reservation.getId());
+        java.math.BigDecimal depositAmount=savedItems.isEmpty()
+                ? java.math.BigDecimal.valueOf(200000L).multiply(java.math.BigDecimal.valueOf(request.partySize()))
+                : savedItems.stream().map(item->item.getUnitPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())))
+                    .reduce(java.math.BigDecimal.ZERO,java.math.BigDecimal::add).multiply(new java.math.BigDecimal("0.10")).setScale(0,java.math.RoundingMode.HALF_UP);
+        depositRepository.save(new ReservationDeposit(reservation.getId(),depositAmount));
+        return response(reservation, savedItems);
     }
 
     public ReservationDtos.ReservationResponse lookup(String code, String phone) {
@@ -202,10 +211,13 @@ public class ReservationService {
         Long sessionId = sessionRepository.findByReservationId(reservation.getId()).map(ServiceSession::getId).orElse(null);
         long openOrderCount = sessionId == null ? 0 : diningOrderRepository.countByServiceSessionIdAndStatusIn(sessionId, OPEN_ORDERS);
         boolean paid = sessionId != null && paymentRepository.existsByServiceSessionIdAndStatus(sessionId, PaymentStatus.PAID);
+        ReservationDeposit deposit=depositRepository.findByReservationId(reservation.getId()).orElse(null);
         return new ReservationDtos.ReservationResponse(reservation.getId(), reservation.getCode(), reservation.getCustomerName(),
                 reservation.getPhone(), reservation.getEmail(), reservation.getReservationDate(), reservation.getTimeSlot(),
                 reservation.getPartySize(), reservation.getPreferredFloor(), reservation.getNote(), reservation.getStatus(),
-                reservation.getCreatedAt(), itemResponses, assignedResponses, sessionId, openOrderCount, paid);
+                reservation.getCreatedAt(), itemResponses, assignedResponses, sessionId, openOrderCount, paid,
+                deposit==null?java.math.BigDecimal.ZERO:deposit.getAmount(),deposit==null?DepositStatus.PENDING:deposit.getStatus(),
+                deposit==null?null:deposit.getMethod(),deposit==null?null:deposit.getPaidAt());
     }
 
     private void validateSlot(String slot) {

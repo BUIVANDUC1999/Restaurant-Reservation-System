@@ -6,6 +6,8 @@ import java.time.Instant;
 import java.math.BigDecimal;
 import java.util.List;
 import com.khamphaviet.restaurant.table.TableStatus;
+import com.khamphaviet.restaurant.deposit.DepositMethod;
+import com.khamphaviet.restaurant.deposit.DepositStatus;
 
 public final class ReservationDtos {
     private ReservationDtos() {}
@@ -29,7 +31,8 @@ public final class ReservationDtos {
                                       LocalDate reservationDate, String timeSlot, Integer partySize,
                                       String preferredFloor, String note, ReservationStatus status,
                                       Instant createdAt, List<PreOrderItemResponse> preOrderItems,
-                                      List<AssignedTableResponse> assignedTables, Long serviceSessionId, long openOrderCount, boolean paid) {}
+                                      List<AssignedTableResponse> assignedTables, Long serviceSessionId, long openOrderCount, boolean paid,
+                                      BigDecimal depositAmount, DepositStatus depositStatus, DepositMethod depositMethod, Instant depositPaidAt) {}
     public record AvailabilityResponse(boolean available, int remainingSeats, String message) {}
     public record StatusRequest(@NotNull ReservationStatus status) {}
 }

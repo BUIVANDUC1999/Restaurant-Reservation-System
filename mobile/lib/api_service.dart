@@ -59,6 +59,45 @@ class ApiService {
     return Reservation.fromJson(_decode(response) as Map<String, dynamic>);
   }
 
+  Future<DepositQr> depositQr(String code, String phone) async =>
+      DepositQr.fromJson(_decode(await http
+          .post(
+              Uri.parse(
+                  '${AppConfig.apiBaseUrl}/reservations/$code/deposit/qr'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'phone': phone}))
+          .timeout(const Duration(seconds: 15))) as Map<String, dynamic>);
+
+  Future<void> confirmDepositQr(String code, String phone) async {
+    _decode(await http
+        .post(
+            Uri.parse(
+                '${AppConfig.apiBaseUrl}/reservations/$code/deposit/qr/confirm'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'phone': phone}))
+        .timeout(const Duration(seconds: 15)));
+  }
+
+  Future<PayPalOrder> createDepositPayPal(String code, String phone) async =>
+      PayPalOrder.fromJson(_decode(await http
+          .post(
+              Uri.parse(
+                  '${AppConfig.apiBaseUrl}/reservations/$code/deposit/paypal/orders'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'phone': phone}))
+          .timeout(const Duration(seconds: 30))) as Map<String, dynamic>);
+
+  Future<void> captureDepositPayPal(
+      String code, String phone, String orderId) async {
+    _decode(await http
+        .post(
+            Uri.parse(
+                '${AppConfig.apiBaseUrl}/reservations/$code/deposit/paypal/orders/capture'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'phone': phone, 'orderId': orderId}))
+        .timeout(const Duration(seconds: 30)));
+  }
+
   dynamic _decode(http.Response response) {
     dynamic data;
     try {
@@ -67,9 +106,8 @@ class ApiService {
       data = null;
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = data is Map<String, dynamic>
-          ? data['message'] as String?
-          : null;
+      final message =
+          data is Map<String, dynamic> ? data['message'] as String? : null;
       throw ApiException(
         message ?? 'Không thể kết nối máy chủ (${response.statusCode})',
       );
@@ -77,7 +115,6 @@ class ApiService {
     return data;
   }
 
-  String _date(DateTime value) =>
-      '${value.year.toString().padLeft(4, '0')}-'
+  String _date(DateTime value) => '${value.year.toString().padLeft(4, '0')}-'
       '${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 }

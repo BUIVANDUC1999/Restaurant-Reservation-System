@@ -33,3 +33,8 @@ app:
     client-secret: ${PAYPAL_CLIENT_SECRET:}
     currency: ${PAYPAL_CURRENCY:USD}
     vnd-per-usd: ${PAYPAL_VND_PER_USD:25000}
+  deposit:
+    qr:
+      bank-id: ${QR_BANK_ID:}
+      account-no: ${QR_ACCOUNT_NO:}
+      account-name: ${QR_ACCOUNT_NAME:}

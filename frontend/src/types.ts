@@ -1,7 +1,7 @@
 export type MenuItem={id:number;name:string;category:string;price:number;description:string;imageUrl:string;featured:boolean;available:boolean}
 export type PreOrderItem={id:number;menuItemId:number;itemName:string;unitPrice:number;quantity:number;status:'REQUESTED'|'CONFIRMED'|'CANCELLED';lineTotal:number}
 export type AssignedTable={id:number;code:string;name:string;floor:string;area:string;seats:number;status:RestaurantTable['status']}
-export type Reservation={id:number;code:string;customerName:string;phone:string;email?:string;reservationDate:string;timeSlot:'LUNCH'|'DINNER';partySize:number;preferredFloor?:string;note?:string;status:string;createdAt:string;preOrderItems:PreOrderItem[];assignedTables:AssignedTable[];serviceSessionId?:number;openOrderCount:number;paid:boolean}
+export type Reservation={id:number;code:string;customerName:string;phone:string;email?:string;reservationDate:string;timeSlot:'LUNCH'|'DINNER';partySize:number;preferredFloor?:string;note?:string;status:string;createdAt:string;preOrderItems:PreOrderItem[];assignedTables:AssignedTable[];serviceSessionId?:number;openOrderCount:number;paid:boolean;depositAmount:number;depositStatus:'PENDING'|'PAID';depositMethod?:'QR'|'PAYPAL';depositPaidAt?:string}
 export type AuthUser={accessToken:string;id:number;fullName:string;email:string;role:'ADMIN'|'STAFF'|'KITCHEN'|'CUSTOMER'}
 export type UserStats={totalCount:number;adminCount:number;employeeCount:number;customerCount:number;activeCount:number}
 export type OperationsReport={reservationsToday:number;pendingReservations:number;activeSessions:number;invoicesThisMonth:number;revenueToday:number;revenueThisMonth:number}
@@ -11,6 +11,7 @@ export type TableOverview=RestaurantTable&{serviceState:'EMPTY'|'RESERVED'|'DINI
 export type CheckoutLine={itemName:string;quantity:number;unitPrice:number;lineTotal:number}
 export type Checkout={serviceSessionId:number;reservationId:number;reservationCode:string;customerName:string;tableCodes:string[];partySize:number;items:CheckoutLine[];subtotal:number;openOrderCount:number;paid:boolean;paymentId?:number;invoiceCode?:string;discountAmount:number;totalAmount:number;paymentMethod?:'CASH'|'BANK_TRANSFER'|'QR'|'CARD'|'PAYPAL';paidAt?:string}
 export type PayPalConfig={enabled:boolean;clientId:string;currency:string;vndPerUsd:number}
-export type PayPalOrder={orderId:string;status:string;currency:string;amount:number}
+export type PayPalOrder={orderId:string;status:string;currency:string;amount:number;approvalUrl?:string}
+export type DepositQr={enabled:boolean;imageUrl:string;bankId:string;accountNo:string;accountName:string;transferContent:string;amount:number}
 export type DiningOrderItem={id:number;menuItemId:number;itemName:string;unitPrice:number;quantity:number;lineTotal:number}
 export type DiningOrder={id:number;serviceSessionId:number;reservationId:number;reservationCode:string;customerName:string;tableCodes:string[];status:'SUBMITTED'|'PREPARING'|'READY'|'SERVED'|'CANCELLED';source:'PREORDER'|'TABLE_ORDER';note?:string;createdAt:string;updatedAt:string;items:DiningOrderItem[];total:number}

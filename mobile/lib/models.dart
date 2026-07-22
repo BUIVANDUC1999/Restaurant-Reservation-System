@@ -18,14 +18,14 @@ class MenuItem {
   });
 
   factory MenuItem.fromJson(Map<String, dynamic> json) => MenuItem(
-    id: json['id'] as int,
-    name: json['name'] as String,
-    category: json['category'] as String,
-    price: (json['price'] as num).toDouble(),
-    description: json['description'] as String? ?? '',
-    imageUrl: json['imageUrl'] as String? ?? '',
-    featured: json['featured'] as bool? ?? false,
-  );
+        id: json['id'] as int,
+        name: json['name'] as String,
+        category: json['category'] as String,
+        price: (json['price'] as num).toDouble(),
+        description: json['description'] as String? ?? '',
+        imageUrl: json['imageUrl'] as String? ?? '',
+        featured: json['featured'] as bool? ?? false,
+      );
 }
 
 class Reservation {
@@ -36,6 +36,9 @@ class Reservation {
   final String timeSlot;
   final int partySize;
   final String status;
+  final double depositAmount;
+  final String depositStatus;
+  final String? depositMethod;
 
   const Reservation({
     required this.code,
@@ -45,15 +48,48 @@ class Reservation {
     required this.timeSlot,
     required this.partySize,
     required this.status,
+    required this.depositAmount,
+    required this.depositStatus,
+    this.depositMethod,
   });
 
   factory Reservation.fromJson(Map<String, dynamic> json) => Reservation(
-    code: json['code'] as String,
-    customerName: json['customerName'] as String,
-    phone: json['phone'] as String,
-    reservationDate: json['reservationDate'] as String,
-    timeSlot: json['timeSlot'] as String,
-    partySize: json['partySize'] as int,
-    status: json['status'] as String,
-  );
+        code: json['code'] as String,
+        customerName: json['customerName'] as String,
+        phone: json['phone'] as String,
+        reservationDate: json['reservationDate'] as String,
+        timeSlot: json['timeSlot'] as String,
+        partySize: json['partySize'] as int,
+        status: json['status'] as String,
+        depositAmount: (json['depositAmount'] as num).toDouble(),
+        depositStatus: json['depositStatus'] as String,
+        depositMethod: json['depositMethod'] as String?,
+      );
+}
+
+class DepositQr {
+  final bool enabled;
+  final String imageUrl, bankId, accountNo, transferContent;
+  final double amount;
+  const DepositQr(
+      {required this.enabled,
+      required this.imageUrl,
+      required this.bankId,
+      required this.accountNo,
+      required this.transferContent,
+      required this.amount});
+  factory DepositQr.fromJson(Map<String, dynamic> json) => DepositQr(
+      enabled: json['enabled'] as bool,
+      imageUrl: json['imageUrl'] as String,
+      bankId: json['bankId'] as String,
+      accountNo: json['accountNo'] as String,
+      transferContent: json['transferContent'] as String,
+      amount: (json['amount'] as num).toDouble());
+}
+
+class PayPalOrder {
+  final String orderId, approvalUrl;
+  const PayPalOrder(this.orderId, this.approvalUrl);
+  factory PayPalOrder.fromJson(Map<String, dynamic> json) => PayPalOrder(
+      json['orderId'] as String, json['approvalUrl'] as String? ?? '');
 }
