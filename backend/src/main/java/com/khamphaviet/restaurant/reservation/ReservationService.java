@@ -8,6 +8,7 @@ import com.khamphaviet.restaurant.order.*;
 import com.khamphaviet.restaurant.billing.*;
 import com.khamphaviet.restaurant.deposit.*;
 import com.khamphaviet.restaurant.notification.NotificationService;
+import com.khamphaviet.restaurant.timeout.OperationalTimePolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
@@ -37,6 +38,7 @@ public class ReservationService {
     private final ReservationDepositRepository depositRepository;
     private final TableSchedulingService schedulingService;
     private final NotificationService notificationService;
+    private final OperationalTimePolicy timePolicy;
     private final SecureRandom random = new SecureRandom();
 
     public ReservationService(ReservationRepository repository, ReservationItemRepository itemRepository, MenuItemRepository menuRepository,
@@ -44,7 +46,7 @@ public class ReservationService {
                               ServiceSessionRepository sessionRepository, DiningOrderRepository diningOrderRepository,
                               DiningOrderService diningOrderService, PaymentRepository paymentRepository,
                               ReservationDepositRepository depositRepository, TableSchedulingService schedulingService,
-                              NotificationService notificationService) {
+                              NotificationService notificationService, OperationalTimePolicy timePolicy) {
         this.repository = repository; this.itemRepository = itemRepository; this.menuRepository = menuRepository;
         this.tableRepository = tableRepository; this.assignmentRepository = assignmentRepository; this.sessionRepository = sessionRepository;
         this.diningOrderRepository = diningOrderRepository;
@@ -53,6 +55,7 @@ public class ReservationService {
         this.depositRepository = depositRepository;
         this.schedulingService = schedulingService;
         this.notificationService = notificationService;
+        this.timePolicy = timePolicy;
     }
 
     public ReservationDtos.AvailabilityResponse availability(LocalDate date, String slot, int partySize) {
@@ -77,7 +80,8 @@ public class ReservationService {
                 schedulingService.validateSelection(request.reservationDate(),reservationTime,duration,request.partySize(),request.selectedTableIds(),null);
         Reservation reservation = repository.save(new Reservation(nextCode(), request.customerName().trim(), request.phone().trim(),
                 request.email(), request.reservationDate(), request.timeSlot(), reservationTime, duration, request.partySize(),
-                "GROUND_FLOOR", request.note(), Boolean.TRUE.equals(request.notifyEmail()), !Boolean.FALSE.equals(request.notifySms())));
+                "GROUND_FLOOR", request.note(), Boolean.TRUE.equals(request.notifyEmail()), !Boolean.FALSE.equals(request.notifySms()),
+                timePolicy.getReservationHoldMinutes()));
         if(!selected.isEmpty()) assignmentRepository.saveAll(selected.stream()
                 .map(table->new ReservationTableAssignment(reservation.getId(),table.getId())).toList());
         savePreOrderItems(reservation.getId(), request.preOrderItems());
@@ -111,10 +115,12 @@ public class ReservationService {
         Reservation reservation = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy đơn đặt bàn"));
         if (reservation.getStatus() != status) {
             boolean allowed = reservation.getStatus() == ReservationStatus.PENDING && List.of(ReservationStatus.CONFIRMED, ReservationStatus.CANCELLED, ReservationStatus.REJECTED).contains(status)
-                    || reservation.getStatus() == ReservationStatus.CONFIRMED && status == ReservationStatus.CANCELLED;
+                    || reservation.getStatus() == ReservationStatus.CONFIRMED
+                        && List.of(ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW).contains(status);
             if (!allowed) throw new BusinessException("Chuyển trạng thái đặt bàn không hợp lệ");
         }
-        if (status == ReservationStatus.CANCELLED || status == ReservationStatus.REJECTED) releaseAssignedTables(id);
+        if (List.of(ReservationStatus.CANCELLED, ReservationStatus.REJECTED, ReservationStatus.NO_SHOW).contains(status))
+            releaseAssignedTables(id);
         reservation.changeStatus(status);
         return response(reservation, itemRepository.findByReservationIdOrderByIdAsc(id));
     }

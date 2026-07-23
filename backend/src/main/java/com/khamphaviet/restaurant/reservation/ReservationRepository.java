@@ -10,6 +10,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByReservationDateAndTimeSlotAndStatusIn(LocalDate date, String timeSlot, List<ReservationStatus> statuses);
     List<Reservation> findByReservationDateAndStatusIn(LocalDate date, List<ReservationStatus> statuses);
     List<Reservation> findAllByOrderByReservationDateDescCreatedAtDesc();
+    List<Reservation> findByStatusIn(List<ReservationStatus> statuses);
     long countByReservationDate(LocalDate reservationDate);
     long countByStatus(ReservationStatus status);
 }

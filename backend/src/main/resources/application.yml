@@ -52,3 +52,13 @@ app:
   notifications:
     email-enabled: ${EMAIL_NOTIFICATIONS_ENABLED:false}
     sms-sandbox: ${SMS_SANDBOX:true}
+  timeouts:
+    reservation-hold-minutes: ${RESERVATION_HOLD_MINUTES:10}
+    cleaning-buffer-minutes: ${CLEANING_BUFFER_MINUTES:15}
+    upcoming-alert-minutes: ${UPCOMING_ALERT_MINUTES:30}
+    late-warning-minutes: ${LATE_WARNING_MINUTES:15}
+    late-critical-minutes: ${LATE_CRITICAL_MINUTES:20}
+    table-request-ack-minutes: ${TABLE_REQUEST_ACK_MINUTES:3}
+    kitchen-critical-overdue-minutes: ${KITCHEN_CRITICAL_OVERDUE_MINUTES:10}
+    cleaning-target-minutes: ${CLEANING_TARGET_MINUTES:15}
+    monitor-delay-ms: ${TIMEOUT_MONITOR_DELAY_MS:60000}

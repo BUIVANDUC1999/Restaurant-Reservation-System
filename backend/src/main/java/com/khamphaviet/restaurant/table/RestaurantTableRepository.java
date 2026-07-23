@@ -8,5 +8,6 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
     List<RestaurantTable> findAllByOrderByFloorAscCodeAsc();
     boolean existsByCodeIgnoreCase(String code);
     Optional<RestaurantTable> findByPublicToken(String publicToken);
+    List<RestaurantTable> findByStatus(TableStatus status);
 }
 

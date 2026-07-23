@@ -5,4 +5,5 @@ import java.util.List;
 
 public interface DiningOrderItemRepository extends JpaRepository<DiningOrderItem, Long> {
     List<DiningOrderItem> findByOrderIdInOrderByIdAsc(List<Long> orderIds);
+    List<DiningOrderItem> findByStatusIn(List<DiningOrderItemStatus> statuses);
 }

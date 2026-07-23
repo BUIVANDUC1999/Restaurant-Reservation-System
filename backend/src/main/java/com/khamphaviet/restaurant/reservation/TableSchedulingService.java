@@ -4,22 +4,25 @@ import com.khamphaviet.restaurant.common.BusinessException;
 import com.khamphaviet.restaurant.deposit.*;
 import com.khamphaviet.restaurant.table.*;
 import org.springframework.stereotype.Service;
+import com.khamphaviet.restaurant.timeout.OperationalTimePolicy;
 import java.time.*;
 import java.util.*;
 
 @Service
 public class TableSchedulingService {
-    public static final int CLEANING_BUFFER_MINUTES = 15;
     private static final List<ReservationStatus> BLOCKING = List.of(
             ReservationStatus.PENDING, ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
     private final RestaurantTableRepository tables;
     private final ReservationRepository reservations;
     private final ReservationTableAssignmentRepository assignments;
     private final ReservationDepositRepository deposits;
+    private final OperationalTimePolicy timePolicy;
 
     public TableSchedulingService(RestaurantTableRepository tables, ReservationRepository reservations,
-                                  ReservationTableAssignmentRepository assignments, ReservationDepositRepository deposits) {
+                                  ReservationTableAssignmentRepository assignments, ReservationDepositRepository deposits,
+                                  OperationalTimePolicy timePolicy) {
         this.tables=tables; this.reservations=reservations; this.assignments=assignments; this.deposits=deposits;
+        this.timePolicy=timePolicy;
     }
 
     public List<ReservationDtos.AvailableTableResponse> available(LocalDate date, LocalTime time, int durationMinutes, int partySize) {
@@ -58,11 +61,12 @@ public class TableSchedulingService {
     }
 
     private Set<Long> blockedTableIds(LocalDate date, LocalTime start, int durationMinutes, Long ignoredReservationId) {
-        LocalTime end=start.plusMinutes(durationMinutes+CLEANING_BUFFER_MINUTES);
+        int cleaningBufferMinutes=timePolicy.getCleaningBufferMinutes();
+        LocalTime end=start.plusMinutes(durationMinutes+cleaningBufferMinutes);
         List<Reservation> sameDay=reservations.findByReservationDateAndStatusIn(date,BLOCKING).stream()
                 .filter(r -> !Objects.equals(r.getId(),ignoredReservationId))
                 .filter(this::stillBlocks)
-                .filter(r -> overlaps(start,end,r.effectiveTime(),r.effectiveTime().plusMinutes(r.effectiveDurationMinutes()+CLEANING_BUFFER_MINUTES)))
+                .filter(r -> overlaps(start,end,r.effectiveTime(),r.effectiveTime().plusMinutes(r.effectiveDurationMinutes()+cleaningBufferMinutes)))
                 .toList();
         if(sameDay.isEmpty()) return Set.of();
         Set<Long> reservationIds=sameDay.stream().map(Reservation::getId).collect(java.util.stream.Collectors.toSet());

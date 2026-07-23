@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.util.UUID;
+import java.time.Instant;
 
 @Entity
 @Table(name = "restaurant_tables")
@@ -23,6 +24,7 @@ public class RestaurantTable {
     @Column(nullable = false) private Integer layoutY;
     @Column(nullable = false, length = 20) private String shape;
     @Column(nullable = false, unique = true, length = 64) private String publicToken;
+    @Column(nullable = false) private Instant statusChangedAt;
 
     public RestaurantTable(String code, String name, String floor, String area, int seats) {
         this(code, name, floor, area, seats, 0, 0, "ROUND");
@@ -31,8 +33,12 @@ public class RestaurantTable {
         this.code = code; this.name = name; this.floor = floor; this.area = area; this.seats = seats;
         this.status = TableStatus.AVAILABLE; this.active = true;
         this.layoutX = layoutX; this.layoutY = layoutY; this.shape = shape; this.publicToken = UUID.randomUUID().toString();
+        this.statusChangedAt = Instant.now();
     }
-    public void changeStatus(TableStatus status) { this.status = status; this.active = status != TableStatus.INACTIVE; }
+    public void changeStatus(TableStatus status) {
+        if (this.status != status) this.statusChangedAt = Instant.now();
+        this.status = status; this.active = status != TableStatus.INACTIVE;
+    }
     public void updateLayout(int x, int y, String shape) { this.layoutX=x; this.layoutY=y; this.shape=shape; }
 }
 

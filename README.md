@@ -56,6 +56,8 @@ cd frontend && npm ci && npm run lint && npm run build
 - Mỗi bàn có QR riêng. QR chỉ nhận yêu cầu khi có phiên phục vụ và có giới hạn chống spam.
 - Bếp cập nhật SLA từng món: mới nhận, đang nấu, chậm, sẵn sàng và đã mang ra.
 - Bộ lập lịch kiểm tra mỗi phút để cảnh báo lịch mới, khách sắp đến 30 phút và khách trễ 15/20 phút.
+- Trung tâm timeout lưu lịch sử đang mở/đã xử lý cho giữ bàn chưa cọc, khách trễ, món quá SLA, QR chưa được nhận và bàn dọn quá lâu. Chỉ lượt giữ chưa cọc tự hết hạn; khách đã xác nhận không bị tự động hủy.
+- Toàn bộ ngưỡng thời gian cấu hình tập trung bằng các biến `*_MINUTES` trong `.env.example`.
 
 ### Gmail và SMS Sandbox
 

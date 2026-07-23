@@ -117,6 +117,13 @@ class RestaurantApiIntegrationTests {
         mvc.perform(get("/api/v1/staff/reservations")
                         .header("Authorization", "Bearer " + login.get("accessToken").asText()))
                 .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/staff/timeouts/policy")
+                        .header("Authorization", "Bearer " + login.get("accessToken").asText()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservationHoldMinutes").value(10))
+                .andExpect(jsonPath("$.lateWarningMinutes").value(15))
+                .andExpect(jsonPath("$.lateCriticalMinutes").value(20))
+                .andExpect(jsonPath("$.tableRequestAckMinutes").value(3));
     }
 
     @Test

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import com.khamphaviet.restaurant.timeout.OperationalTimePolicy;
 
 @Service
 public class NotificationService {
@@ -22,14 +23,16 @@ public class NotificationService {
     private final boolean emailEnabled;
     private final boolean smsSandbox;
     private final String mailFrom;
+    private final OperationalTimePolicy timePolicy;
 
     public NotificationService(OperationalNotificationRepository notifications, ReservationRepository reservations,
                                JavaMailSender mailSender,
                                @Value("${app.notifications.email-enabled:false}") boolean emailEnabled,
                                @Value("${app.notifications.sms-sandbox:true}") boolean smsSandbox,
-                               @Value("${spring.mail.username:no-reply@khamphaviet.local}") String mailFrom) {
+                               @Value("${spring.mail.username:no-reply@khamphaviet.local}") String mailFrom,
+                               OperationalTimePolicy timePolicy) {
         this.notifications=notifications;this.reservations=reservations;this.mailSender=mailSender;
-        this.emailEnabled=emailEnabled;this.smsSandbox=smsSandbox;this.mailFrom=mailFrom;
+        this.emailEnabled=emailEnabled;this.smsSandbox=smsSandbox;this.mailFrom=mailFrom;this.timePolicy=timePolicy;
     }
 
     @Transactional
@@ -37,7 +40,7 @@ public class NotificationService {
         queue(r,NotificationType.NEW_RESERVATION,NotificationChannel.IN_APP,"NHÂN VIÊN",
                 "Có lịch đặt bàn mới",summary(r),"staff-new-"+r.getId());
         String customer="Kính gửi "+r.getCustomerName()+", nhà hàng đã nhận yêu cầu "+r.getCode()+". "+summary(r)
-                +". Bàn được giữ 10 phút để hoàn tất đặt cọc.";
+                +". Bàn được giữ "+timePolicy.getReservationHoldMinutes()+" phút để hoàn tất đặt cọc.";
         if(r.isNotifyEmail()&&r.getEmail()!=null) queue(r,NotificationType.NEW_RESERVATION,NotificationChannel.EMAIL,r.getEmail(),
                 "Xác nhận yêu cầu đặt bàn "+r.getCode(),customer,"email-created-"+r.getId());
         if(r.isNotifySms()) queue(r,NotificationType.NEW_RESERVATION,NotificationChannel.SMS,r.getPhone(),
@@ -56,7 +59,7 @@ public class NotificationService {
         deliverPending();
     }
 
-    @Scheduled(fixedDelay=60000)
+    @Scheduled(fixedDelayString="${app.timeouts.monitor-delay-ms:60000}")
     @Transactional
     public void scheduleReminders() {
         LocalDate today=LocalDate.now(ZONE); LocalDateTime now=LocalDateTime.now(ZONE);
@@ -65,12 +68,15 @@ public class NotificationService {
         for(Reservation r:active){
             LocalDateTime arrival=LocalDateTime.of(r.getReservationDate(),r.effectiveTime());
             long minutes=Duration.between(now,arrival).toMinutes();
-            if(minutes>=29&&minutes<=30) alert(r,NotificationType.UPCOMING_30,"Khách sắp đến",
-                    "Lịch "+r.getCode()+" sẽ đến sau khoảng 30 phút.");
-            if(r.getStatus()==ReservationStatus.CONFIRMED&&minutes<=-15&&minutes>-20) alert(r,NotificationType.LATE_15,
-                    "Khách trễ 15 phút","Lịch "+r.getCode()+" đã trễ 15 phút. Vui lòng xác nhận khách đang đến.");
-            if(r.getStatus()==ReservationStatus.CONFIRMED&&minutes<=-20) alert(r,NotificationType.LATE_20,
-                    "Khách trễ trên 20 phút","Lịch "+r.getCode()+" đã trễ trên 20 phút. Nhân viên cần quyết định giữ hoặc giải phóng bàn.");
+            int upcoming=timePolicy.getUpcomingAlertMinutes();
+            int warning=timePolicy.getLateWarningMinutes();
+            int critical=timePolicy.getLateCriticalMinutes();
+            if(minutes>=upcoming-1&&minutes<=upcoming) alert(r,NotificationType.UPCOMING_30,"Khách sắp đến",
+                    "Lịch "+r.getCode()+" sẽ đến sau khoảng "+upcoming+" phút.");
+            if(r.getStatus()==ReservationStatus.CONFIRMED&&minutes<=-warning&&minutes>-critical) alert(r,NotificationType.LATE_15,
+                    "Khách trễ "+warning+" phút","Lịch "+r.getCode()+" đã trễ "+warning+" phút. Vui lòng xác nhận khách đang đến.");
+            if(r.getStatus()==ReservationStatus.CONFIRMED&&minutes<=-critical) alert(r,NotificationType.LATE_20,
+                    "Khách trễ trên "+critical+" phút","Lịch "+r.getCode()+" đã trễ trên "+critical+" phút. Nhân viên cần quyết định giữ hoặc giải phóng bàn.");
         }
         deliverPending();
     }

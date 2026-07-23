@@ -7,4 +7,5 @@ public interface TableServiceRequestRepository extends JpaRepository<TableServic
     List<TableServiceRequest> findTop100ByOrderByCreatedAtDesc();
     List<TableServiceRequest> findByTableIdAndStatusInOrderByCreatedAtDesc(Long tableId,List<TableRequestStatus> statuses);
     long countByTableIdAndCreatedAtAfter(Long tableId, Instant after);
+    List<TableServiceRequest> findByStatusIn(List<TableRequestStatus> statuses);
 }

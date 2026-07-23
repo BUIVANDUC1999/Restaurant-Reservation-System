@@ -37,13 +37,13 @@ public class Reservation {
 
     public Reservation(String code, String customerName, String phone, String email, LocalDate reservationDate,
                        String timeSlot, LocalTime reservationTime, Integer durationMinutes, Integer partySize,
-                       String preferredFloor, String note, boolean notifyEmail, boolean notifySms) {
+                       String preferredFloor, String note, boolean notifyEmail, boolean notifySms, int holdMinutes) {
         this.code = code; this.customerName = customerName; this.phone = phone; this.email = email;
         this.reservationDate = reservationDate; this.timeSlot = timeSlot; this.reservationTime = reservationTime;
         this.durationMinutes = durationMinutes; this.partySize = partySize;
         this.preferredFloor = preferredFloor; this.note = note; this.status = ReservationStatus.PENDING;
         this.createdAt = Instant.now();
-        this.holdExpiresAt = this.createdAt.plusSeconds(600);
+        this.holdExpiresAt = this.createdAt.plusSeconds(holdMinutes * 60L);
         this.notifyEmail = notifyEmail && email != null && !email.isBlank();
         this.notifySms = notifySms;
     }
@@ -54,7 +54,8 @@ public class Reservation {
         if (status == ReservationStatus.CONFIRMED) this.confirmedAt = now;
         if (status == ReservationStatus.CHECKED_IN) this.checkedInAt = now;
         if (status == ReservationStatus.COMPLETED) this.completedAt = now;
-        if (status == ReservationStatus.CANCELLED || status == ReservationStatus.REJECTED || status == ReservationStatus.NO_SHOW)
+        if (status == ReservationStatus.CANCELLED || status == ReservationStatus.REJECTED
+                || status == ReservationStatus.NO_SHOW || status == ReservationStatus.EXPIRED)
             this.cancelledAt = now;
     }
 

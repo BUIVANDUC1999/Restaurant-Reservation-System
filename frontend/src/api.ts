@@ -1,4 +1,4 @@
-import type {AuthUser,AvailableTable,Checkout,DepositQr,DiningOrder,GuestTable,MenuItem,Notification,OperationsReport,PayPalConfig,PayPalOrder,Reservation,RestaurantTable,TableOverview,TableRequest,UserStats,UserSummary} from './types'
+import type {AuthUser,AvailableTable,Checkout,DepositQr,DiningOrder,GuestTable,MenuItem,Notification,OperationalTimeout,OperationsReport,PayPalConfig,PayPalOrder,Reservation,RestaurantTable,TableOverview,TableRequest,TimeoutPolicy,UserStats,UserSummary} from './types'
 const BASE=import.meta.env.VITE_API_URL||'/api/v1'
 const token=()=>{try{return JSON.parse(localStorage.getItem('restaurant_auth')||'null')?.accessToken}catch{return null}}
 async function request<T>(path:string,options?:RequestInit):Promise<T>{const auth=token();const response=await fetch(`${BASE}${path}`,{headers:{'Content-Type':'application/json',...(auth?{Authorization:`Bearer ${auth}`}:{}) ,...options?.headers},...options});const text=await response.text();let data:null|Record<string,unknown>=null;try{data=text?JSON.parse(text):null}catch{data=null}if(!response.ok)throw new Error(typeof data?.message==='string'?data.message:(response.status===401||response.status===403?'Phiên đăng nhập không hợp lệ':'Có lỗi xảy ra'));return data as T}
@@ -43,6 +43,9 @@ export const api={
   readNotification:(id:number)=>request<void>(`/staff/notifications/${id}/read`,{method:'PATCH'}),
   tableRequests:()=>request<TableRequest[]>('/staff/table-requests'),
   updateTableRequest:(id:number,status:string)=>request<TableRequest>(`/staff/table-requests/${id}`,{method:'PATCH',body:JSON.stringify({status})}),
+  timeouts:()=>request<OperationalTimeout[]>('/staff/timeouts'),
+  timeoutPolicy:()=>request<TimeoutPolicy>('/staff/timeouts/policy'),
+  resolveTimeout:(id:number,note='Đã xử lý')=>request<OperationalTimeout>(`/staff/timeouts/${id}/resolve`,{method:'PATCH',body:JSON.stringify({note})}),
   guestTable:(token:string)=>request<GuestTable>(`/table-guest/${encodeURIComponent(token)}`),
   createTableRequest:(token:string,type:string,note:string)=>request<TableRequest>(`/table-guest/${encodeURIComponent(token)}/requests`,{method:'POST',body:JSON.stringify({type,note})}),
   checkouts:()=>request<Checkout[]>('/staff/checkouts'),
