@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class AppConfig {
   AppConfig._();
 
@@ -6,6 +8,7 @@ class AppConfig {
   // flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8080/api/v1
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8080/api/v1',
+    defaultValue:
+        kIsWeb ? 'http://localhost:8080/api/v1' : 'http://10.0.2.2:8080/api/v1',
   );
 }

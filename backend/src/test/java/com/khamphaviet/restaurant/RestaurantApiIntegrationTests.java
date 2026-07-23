@@ -12,6 +12,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -129,5 +131,31 @@ class RestaurantApiIntegrationTests {
         mvc.perform(get("/api/v1/admin/users/stats")
                         .header("Authorization", "Bearer " + login.get("accessToken").asText()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void exactTimeAndCleaningBufferPreventOverlappingTableBookings() throws Exception {
+        String date=LocalDate.now().plusYears(2).plusDays(17).toString();
+        var available=mvc.perform(get("/api/v1/reservations/available-tables")
+                        .param("date",date).param("time","18:00").param("durationMinutes","120").param("partySize","2"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].layoutX").isNumber()).andReturn();
+        long tableId=objectMapper.readTree(available.getResponse().getContentAsString()).get(0).get("id").asLong();
+
+        Map<String,Object> first=new HashMap<>();
+        first.put("customerName","Khách khung giờ 1");first.put("phone","0908888001");first.put("reservationDate",date);
+        first.put("timeSlot","DINNER");first.put("reservationTime","18:00");first.put("durationMinutes",120);
+        first.put("partySize",2);first.put("selectedTableIds",List.of(tableId));first.put("preOrderItems",List.of());
+        mvc.perform(post("/api/v1/reservations").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(first)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.reservationTime").value("18:00:00"));
+
+        Map<String,Object> overlap=new HashMap<>(first);overlap.put("customerName","Khách bị trùng");overlap.put("phone","0908888002");
+        overlap.put("reservationTime","19:45");
+        mvc.perform(post("/api/v1/reservations").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(overlap)))
+                .andExpect(status().isBadRequest());
+
+        Map<String,Object> later=new HashMap<>(first);later.put("customerName","Khách sau dọn bàn");later.put("phone","0908888003");
+        later.put("reservationTime","20:30");
+        mvc.perform(post("/api/v1/reservations").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(later)))
+                .andExpect(status().isOk());
     }
 }

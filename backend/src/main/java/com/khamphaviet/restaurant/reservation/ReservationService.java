@@ -7,11 +7,13 @@ import com.khamphaviet.restaurant.service.*;
 import com.khamphaviet.restaurant.order.*;
 import com.khamphaviet.restaurant.billing.*;
 import com.khamphaviet.restaurant.deposit.*;
+import com.khamphaviet.restaurant.notification.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import java.security.SecureRandom;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -33,18 +35,24 @@ public class ReservationService {
     private final DiningOrderService diningOrderService;
     private final PaymentRepository paymentRepository;
     private final ReservationDepositRepository depositRepository;
+    private final TableSchedulingService schedulingService;
+    private final NotificationService notificationService;
     private final SecureRandom random = new SecureRandom();
 
     public ReservationService(ReservationRepository repository, ReservationItemRepository itemRepository, MenuItemRepository menuRepository,
                               RestaurantTableRepository tableRepository, ReservationTableAssignmentRepository assignmentRepository,
                               ServiceSessionRepository sessionRepository, DiningOrderRepository diningOrderRepository,
-                              DiningOrderService diningOrderService, PaymentRepository paymentRepository, ReservationDepositRepository depositRepository) {
+                              DiningOrderService diningOrderService, PaymentRepository paymentRepository,
+                              ReservationDepositRepository depositRepository, TableSchedulingService schedulingService,
+                              NotificationService notificationService) {
         this.repository = repository; this.itemRepository = itemRepository; this.menuRepository = menuRepository;
         this.tableRepository = tableRepository; this.assignmentRepository = assignmentRepository; this.sessionRepository = sessionRepository;
         this.diningOrderRepository = diningOrderRepository;
         this.diningOrderService = diningOrderService;
         this.paymentRepository = paymentRepository;
         this.depositRepository = depositRepository;
+        this.schedulingService = schedulingService;
+        this.notificationService = notificationService;
     }
 
     public ReservationDtos.AvailabilityResponse availability(LocalDate date, String slot, int partySize) {
@@ -59,11 +67,19 @@ public class ReservationService {
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public ReservationDtos.ReservationResponse create(ReservationDtos.CreateRequest request) {
+        LocalTime reservationTime=request.reservationTime()!=null?request.reservationTime():
+                ("LUNCH".equals(request.timeSlot())?LocalTime.of(11,0):LocalTime.of(17,30));
+        int duration=request.durationMinutes()==null?120:request.durationMinutes();
+        schedulingService.validateSchedule(request.reservationDate(),reservationTime,duration);
         var available = availability(request.reservationDate(), request.timeSlot(), request.partySize());
         if (!available.available()) throw new BusinessException("Không còn đủ chỗ cho số khách đã chọn");
+        List<RestaurantTable> selected=request.selectedTableIds()==null||request.selectedTableIds().isEmpty()?List.of():
+                schedulingService.validateSelection(request.reservationDate(),reservationTime,duration,request.partySize(),request.selectedTableIds(),null);
         Reservation reservation = repository.save(new Reservation(nextCode(), request.customerName().trim(), request.phone().trim(),
-                request.email(), request.reservationDate(), request.timeSlot(), request.partySize(),
-                request.preferredFloor(), request.note()));
+                request.email(), request.reservationDate(), request.timeSlot(), reservationTime, duration, request.partySize(),
+                "GROUND_FLOOR", request.note(), Boolean.TRUE.equals(request.notifyEmail()), !Boolean.FALSE.equals(request.notifySms())));
+        if(!selected.isEmpty()) assignmentRepository.saveAll(selected.stream()
+                .map(table->new ReservationTableAssignment(reservation.getId(),table.getId())).toList());
         savePreOrderItems(reservation.getId(), request.preOrderItems());
         List<ReservationItem> savedItems=itemRepository.findByReservationIdOrderByIdAsc(reservation.getId());
         java.math.BigDecimal depositAmount=savedItems.isEmpty()
@@ -71,6 +87,7 @@ public class ReservationService {
                 : savedItems.stream().map(item->item.getUnitPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())))
                     .reduce(java.math.BigDecimal.ZERO,java.math.BigDecimal::add).multiply(new java.math.BigDecimal("0.10")).setScale(0,java.math.RoundingMode.HALF_UP);
         depositRepository.save(new ReservationDeposit(reservation.getId(),depositAmount));
+        notificationService.reservationCreated(reservation);
         return response(reservation, savedItems);
     }
 
@@ -117,24 +134,16 @@ public class ReservationService {
         if (List.of(ReservationStatus.CHECKED_IN, ReservationStatus.COMPLETED, ReservationStatus.CANCELLED, ReservationStatus.REJECTED).contains(reservation.getStatus()))
             throw new BusinessException("Không thể đổi bàn ở trạng thái hiện tại");
         List<Long> tableIds = requestedTableIds.stream().distinct().toList();
-        List<RestaurantTable> selectedTables = tableRepository.findAllById(tableIds);
-        if (selectedTables.size() != tableIds.size()) throw new BusinessException("Có bàn không tồn tại");
+        List<RestaurantTable> selectedTables = schedulingService.validateSelection(reservation.getReservationDate(),
+                reservation.effectiveTime(),reservation.effectiveDurationMinutes(),reservation.getPartySize(),tableIds,id);
         List<ReservationTableAssignment> current = assignmentRepository.findByReservationId(id);
         var currentIds = current.stream().map(ReservationTableAssignment::getTableId).collect(java.util.stream.Collectors.toSet());
-        if (selectedTables.stream().anyMatch(table -> !table.isActive() || (table.getStatus() != TableStatus.AVAILABLE && !currentIds.contains(table.getId()))))
-            throw new BusinessException("Một hoặc nhiều bàn đã được sử dụng");
-        int capacity = selectedTables.stream().mapToInt(RestaurantTable::getSeats).sum();
-        if (capacity < reservation.getPartySize()) throw new BusinessException("Tổng số ghế chưa đủ cho đoàn khách");
 
         var selectedIds = new HashSet<>(tableIds);
         List<ReservationTableAssignment> removed = current.stream().filter(a -> !selectedIds.contains(a.getTableId())).toList();
         if (!removed.isEmpty()) {
-            List<RestaurantTable> released = tableRepository.findAllById(removed.stream().map(ReservationTableAssignment::getTableId).toList());
-            released.forEach(table -> table.changeStatus(TableStatus.AVAILABLE));
             assignmentRepository.deleteAll(removed);
         }
-        selectedTables.forEach(table -> table.changeStatus(TableStatus.RESERVED));
-        tableRepository.saveAll(selectedTables);
         var newAssignments = tableIds.stream().filter(tableId -> !currentIds.contains(tableId))
                 .map(tableId -> new ReservationTableAssignment(id, tableId)).toList();
         assignmentRepository.saveAll(newAssignments);
@@ -207,15 +216,18 @@ public class ReservationService {
         List<RestaurantTable> assigned = tableRepository.findAllById(assignmentRepository.findByReservationId(reservation.getId()).stream()
                 .map(ReservationTableAssignment::getTableId).toList());
         var assignedResponses = assigned.stream().map(table -> new ReservationDtos.AssignedTableResponse(table.getId(), table.getCode(),
-                table.getName(), table.getFloor(), table.getArea(), table.getSeats(), table.getStatus())).toList();
+                table.getName(), table.getFloor(), table.getArea(), table.getSeats(), table.getStatus(),
+                table.getLayoutX(),table.getLayoutY(),table.getShape())).toList();
         Long sessionId = sessionRepository.findByReservationId(reservation.getId()).map(ServiceSession::getId).orElse(null);
         long openOrderCount = sessionId == null ? 0 : diningOrderRepository.countByServiceSessionIdAndStatusIn(sessionId, OPEN_ORDERS);
         boolean paid = sessionId != null && paymentRepository.existsByServiceSessionIdAndStatus(sessionId, PaymentStatus.PAID);
         ReservationDeposit deposit=depositRepository.findByReservationId(reservation.getId()).orElse(null);
         return new ReservationDtos.ReservationResponse(reservation.getId(), reservation.getCode(), reservation.getCustomerName(),
                 reservation.getPhone(), reservation.getEmail(), reservation.getReservationDate(), reservation.getTimeSlot(),
-                reservation.getPartySize(), reservation.getPreferredFloor(), reservation.getNote(), reservation.getStatus(),
-                reservation.getCreatedAt(), itemResponses, assignedResponses, sessionId, openOrderCount, paid,
+                reservation.getPartySize(),reservation.effectiveTime(),reservation.effectiveDurationMinutes(),reservation.getHoldExpiresAt(),
+                reservation.getPreferredFloor(), reservation.getNote(), reservation.getStatus(),
+                reservation.getCreatedAt(),reservation.getConfirmedAt(),reservation.getCheckedInAt(),reservation.getCompletedAt(),
+                reservation.isNotifyEmail(),reservation.isNotifySms(),itemResponses, assignedResponses, sessionId, openOrderCount, paid,
                 deposit==null?java.math.BigDecimal.ZERO:deposit.getAmount(),deposit==null?DepositStatus.PENDING:deposit.getStatus(),
                 deposit==null?null:deposit.getMethod(),deposit==null?null:deposit.getPaidAt());
     }

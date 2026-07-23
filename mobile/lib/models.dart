@@ -34,6 +34,9 @@ class Reservation {
   final String phone;
   final String reservationDate;
   final String timeSlot;
+  final String reservationTime;
+  final int durationMinutes;
+  final List<String> tableCodes;
   final int partySize;
   final String status;
   final double depositAmount;
@@ -46,6 +49,9 @@ class Reservation {
     required this.phone,
     required this.reservationDate,
     required this.timeSlot,
+    required this.reservationTime,
+    required this.durationMinutes,
+    required this.tableCodes,
     required this.partySize,
     required this.status,
     required this.depositAmount,
@@ -59,12 +65,41 @@ class Reservation {
         phone: json['phone'] as String,
         reservationDate: json['reservationDate'] as String,
         timeSlot: json['timeSlot'] as String,
+        reservationTime: json['reservationTime'] as String? ??
+            (json['timeSlot'] == 'LUNCH' ? '11:00' : '17:30'),
+        durationMinutes: json['durationMinutes'] as int? ?? 120,
+        tableCodes: ((json['assignedTables'] as List?) ?? const [])
+            .map((e) => (e as Map<String, dynamic>)['code'] as String)
+            .toList(),
         partySize: json['partySize'] as int,
         status: json['status'] as String,
         depositAmount: (json['depositAmount'] as num).toDouble(),
         depositStatus: json['depositStatus'] as String,
         depositMethod: json['depositMethod'] as String?,
       );
+}
+
+class AvailableTable {
+  final int id, seats, layoutX, layoutY;
+  final String code, name, area, shape;
+  const AvailableTable(
+      {required this.id,
+      required this.seats,
+      required this.layoutX,
+      required this.layoutY,
+      required this.code,
+      required this.name,
+      required this.area,
+      required this.shape});
+  factory AvailableTable.fromJson(Map<String, dynamic> json) => AvailableTable(
+      id: json['id'] as int,
+      seats: json['seats'] as int,
+      layoutX: json['layoutX'] as int,
+      layoutY: json['layoutY'] as int,
+      code: json['code'] as String,
+      name: json['name'] as String,
+      area: json['area'] as String,
+      shape: json['shape'] as String);
 }
 
 class DepositQr {

@@ -31,7 +31,12 @@ class ApiService {
     required String email,
     required DateTime date,
     required String timeSlot,
+    required String reservationTime,
+    required int durationMinutes,
     required int partySize,
+    required List<int> selectedTableIds,
+    required bool notifyEmail,
+    required bool notifySms,
   }) async {
     final response = await http
         .post(
@@ -43,12 +48,35 @@ class ApiService {
             'email': email.isEmpty ? null : email,
             'reservationDate': _date(date),
             'timeSlot': timeSlot,
+            'reservationTime': reservationTime,
+            'durationMinutes': durationMinutes,
             'partySize': partySize,
+            'selectedTableIds': selectedTableIds,
+            'notifyEmail': notifyEmail,
+            'notifySms': notifySms,
             'preOrderItems': <Object>[],
           }),
         )
         .timeout(const Duration(seconds: 15));
     return Reservation.fromJson(_decode(response) as Map<String, dynamic>);
+  }
+
+  Future<List<AvailableTable>> availableTables(
+      DateTime date, String time, int duration, int guests) async {
+    final uri =
+        Uri.parse('${AppConfig.apiBaseUrl}/reservations/available-tables')
+            .replace(queryParameters: {
+      'date': _date(date),
+      'time': time,
+      'durationMinutes': '$duration',
+      'partySize': '$guests'
+    });
+    final data =
+        _decode(await http.get(uri).timeout(const Duration(seconds: 15)))
+            as List;
+    return data
+        .map((e) => AvailableTable.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Reservation> lookup(String code, String phone) async {

@@ -3,8 +3,8 @@ import {FormEvent, useEffect, useMemo, useState} from 'react';
 import {api} from '../api';
 import type {MenuItem} from '../types';
 
-type FormState={name:string;category:string;price:string;description:string;imageUrl:string;featured:boolean;available:boolean};
-const empty:FormState={name:'',category:'',price:'',description:'',imageUrl:'',featured:false,available:true};
+type FormState={name:string;category:string;price:string;description:string;imageUrl:string;featured:boolean;available:boolean;preparationMinutes:string};
+const empty:FormState={name:'',category:'',price:'',description:'',imageUrl:'',featured:false,available:true,preparationMinutes:'20'};
 
 export default function MenuManagementPage(){
   const[items,setItems]=useState<MenuItem[]>([]);const[search,setSearch]=useState('');const[status,setStatus]=useState('ALL');
@@ -18,8 +18,8 @@ export default function MenuManagementPage(){
     return matches&&(status==='ALL'||status==='AVAILABLE'&&item.available||status==='HIDDEN'&&!item.available);
   }),[items,search,status]);
   function create(){setEditing(undefined);setForm(empty);setError('');setSuccess('');setOpen(true)}
-  function edit(item:MenuItem){setEditing(item);setForm({name:item.name,category:item.category,price:String(item.price),description:item.description||'',imageUrl:item.imageUrl||'',featured:item.featured,available:item.available});setError('');setSuccess('');setOpen(true)}
-  async function submit(event:FormEvent){event.preventDefault();setBusy(true);setError('');try{const body={...form,price:Number(form.price)};if(editing)await api.updateMenuItem(editing.id,body);else await api.createMenuItem(body);await load();setSuccess(editing?'Đã cập nhật món ăn':'Đã thêm món ăn mới');setOpen(false)}catch(e){setError(e instanceof Error?e.message:'Không lưu được món ăn')}finally{setBusy(false)}}
+  function edit(item:MenuItem){setEditing(item);setForm({name:item.name,category:item.category,price:String(item.price),description:item.description||'',imageUrl:item.imageUrl||'',featured:item.featured,available:item.available,preparationMinutes:String(item.preparationMinutes||20)});setError('');setSuccess('');setOpen(true)}
+  async function submit(event:FormEvent){event.preventDefault();setBusy(true);setError('');try{const body={...form,price:Number(form.price),preparationMinutes:Number(form.preparationMinutes)};if(editing)await api.updateMenuItem(editing.id,body);else await api.createMenuItem(body);await load();setSuccess(editing?'Đã cập nhật món ăn':'Đã thêm món ăn mới');setOpen(false)}catch(e){setError(e instanceof Error?e.message:'Không lưu được món ăn')}finally{setBusy(false)}}
   async function toggle(item:MenuItem){setBusy(true);setError('');try{await api.setMenuAvailability(item.id,!item.available);await load()}catch(e){setError(e instanceof Error?e.message:'Không đổi được trạng thái món')}finally{setBusy(false)}}
   return <section className="page-section container menu-admin-page">
     <div className="menu-admin-heading"><div><p className="eyebrow dark">KHU VỰC NHÂN VIÊN</p><h1>Quản lý thực đơn</h1><p className="page-lead">Thêm món mới, cập nhật giá, hình ảnh và trạng thái phục vụ.</p></div><button className="btn btn-green" onClick={create}><Plus/> Thêm món</button></div>

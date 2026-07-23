@@ -27,6 +27,12 @@ services:
       QR_BANK_ID: ${QR_BANK_ID:-}
       QR_ACCOUNT_NO: ${QR_ACCOUNT_NO:-}
       QR_ACCOUNT_NAME: ${QR_ACCOUNT_NAME:-KHAM PHA VIET}
+      EMAIL_NOTIFICATIONS_ENABLED: ${EMAIL_NOTIFICATIONS_ENABLED:-false}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      SMS_SANDBOX: ${SMS_SANDBOX:-true}
     ports:
       - "8080:8080"
     depends_on:

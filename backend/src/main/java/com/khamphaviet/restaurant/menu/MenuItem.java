@@ -20,12 +20,19 @@ public class MenuItem {
     @Column(length = 600) private String imageUrl;
     @Column(nullable = false) private boolean featured;
     @Column(nullable = false) private boolean available;
+    @Column(nullable = false, columnDefinition = "integer default 20") private Integer preparationMinutes;
 
     public MenuItem(String name, String category, BigDecimal price, String description, String imageUrl, boolean featured, boolean available) {
-        update(name, category, price, description, imageUrl, featured, available);
+        update(name, category, price, description, imageUrl, featured, available, 20);
+    }
+    public MenuItem(String name, String category, BigDecimal price, String description, String imageUrl, boolean featured, boolean available, int preparationMinutes) {
+        update(name,category,price,description,imageUrl,featured,available,preparationMinutes);
     }
 
     public void update(String name, String category, BigDecimal price, String description, String imageUrl, boolean featured, boolean available) {
+        update(name, category, price, description, imageUrl, featured, available, preparationMinutes == null ? 20 : preparationMinutes);
+    }
+    public void update(String name, String category, BigDecimal price, String description, String imageUrl, boolean featured, boolean available, int preparationMinutes) {
         this.name = name.trim();
         this.category = category.trim();
         this.price = price;
@@ -33,6 +40,7 @@ public class MenuItem {
         this.imageUrl = imageUrl == null ? null : imageUrl.trim();
         this.featured = featured;
         this.available = available;
+        this.preparationMinutes = preparationMinutes;
     }
 
     public void setAvailable(boolean available) { this.available = available; }

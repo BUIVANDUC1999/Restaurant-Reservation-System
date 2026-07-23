@@ -18,6 +18,7 @@ public class TableOverviewService {
     }
 
     public record TableOverview(Long id,String code,String name,String floor,String area,Integer seats,TableStatus status,boolean active,
+                                Integer layoutX,Integer layoutY,String shape,String publicToken,
                                 TableServiceState serviceState,Long reservationId,String reservationCode,String customerName,
                                 String customerPhone,Integer partySize,Long serviceSessionId,long openOrderCount,long readyOrderCount) {}
 
@@ -42,7 +43,8 @@ public class TableOverviewService {
             if(sessionId!=null){openCount=orders.countByServiceSessionIdAndStatusIn(sessionId,OPEN);readyCount=orders.countByServiceSessionIdAndStatus(sessionId,DiningOrderStatus.READY);}
         }
         TableServiceState state=state(table,openCount,readyCount);
-        return new TableOverview(table.getId(),table.getCode(),table.getName(),table.getFloor(),table.getArea(),table.getSeats(),table.getStatus(),table.isActive(),state,
+        return new TableOverview(table.getId(),table.getCode(),table.getName(),table.getFloor(),table.getArea(),table.getSeats(),table.getStatus(),table.isActive(),
+                table.getLayoutX(),table.getLayoutY(),table.getShape(),table.getPublicToken(),state,
                 reservation==null?null:reservation.getId(),reservation==null?null:reservation.getCode(),reservation==null?null:reservation.getCustomerName(),
                 reservation==null?null:reservation.getPhone(),reservation==null?null:reservation.getPartySize(),sessionId,openCount,readyCount);
     }

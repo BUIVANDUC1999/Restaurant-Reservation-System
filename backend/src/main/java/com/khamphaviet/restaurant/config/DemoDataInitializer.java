@@ -4,17 +4,21 @@ import com.khamphaviet.restaurant.auth.*;
 import com.khamphaviet.restaurant.table.*;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.context.annotation.Profile;
 
 @Component
 @Profile("demo")
 public class DemoDataInitializer implements ApplicationRunner {
-    private final AppUserRepository users; private final RestaurantTableRepository tables; private final PasswordEncoder encoder;
+    private final AppUserRepository users;
+    private final RestaurantTableRepository tables;
+    private final PasswordEncoder encoder;
+
     public DemoDataInitializer(AppUserRepository users, RestaurantTableRepository tables, PasswordEncoder encoder) {
         this.users = users; this.tables = tables; this.encoder = encoder;
     }
+
     @Override public void run(ApplicationArguments args) {
         createUserIfMissing("Quản trị viên", "admin@khamphaviet.vn", "Admin@123", UserRole.ADMIN);
         createUserIfMissing("Nguyễn Minh Anh", "staff@khamphaviet.vn", "Staff@123", UserRole.STAFF);
@@ -24,10 +28,16 @@ public class DemoDataInitializer implements ApplicationRunner {
         createUserIfMissing("Lò Thị Mai", "kitchen@khamphaviet.vn", "Kitchen@123", UserRole.KITCHEN);
         createUserIfMissing("Trần Thu Hà", "customer@khamphaviet.vn", "Customer@123", UserRole.CUSTOMER);
         if (tables.count() == 0) {
-            for (int i = 1; i <= 10; i++) tables.save(new RestaurantTable("T1-" + String.format("%02d", i), "Bàn " + i, "Tầng 1", i <= 4 ? "Cửa sổ" : "Sảnh chính", i % 3 == 0 ? 8 : 6));
-            for (int i = 1; i <= 12; i++) tables.save(new RestaurantTable("T2-" + String.format("%02d", i), "Bàn " + (10 + i), "Tầng 2", i <= 5 ? "Sân khấu" : "Sảnh tiệc", i % 4 == 0 ? 10 : 8));
+            for (int i = 1; i <= 22; i++) {
+                int column = (i - 1) % 6, row = (i - 1) / 6;
+                String area = i <= 6 ? "Cửa sổ" : i <= 14 ? "Sảnh chính" : i <= 18 ? "Gia đình" : "Riêng tư";
+                int seats = i % 5 == 0 ? 8 : i % 3 == 0 ? 6 : 4;
+                tables.save(new RestaurantTable("B" + String.format("%02d", i), "Bàn " + i, "Tầng trệt",
+                        area, seats, 8 + column * 15, 12 + row * 23, i % 4 == 0 ? "RECTANGLE" : "ROUND"));
+            }
         }
     }
+
     private void createUserIfMissing(String name, String email, String password, UserRole role) {
         if (users.findByEmailIgnoreCase(email).isEmpty()) users.save(new AppUser(name, email, encoder.encode(password), role));
     }

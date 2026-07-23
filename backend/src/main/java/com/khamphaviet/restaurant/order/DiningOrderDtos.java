@@ -8,11 +8,14 @@ import java.util.List;
 
 public final class DiningOrderDtos {
     private DiningOrderDtos() {}
-    public record ItemRequest(@NotNull Long menuItemId, @Min(1) @Max(50) int quantity) {}
-    public record CreateRequest(@NotEmpty @Size(max = 30) List<@Valid ItemRequest> items, @Size(max = 500) String note) {}
-    public record StatusRequest(@NotNull DiningOrderStatus status) {}
-    public record ItemResponse(Long id, Long menuItemId, String itemName, BigDecimal unitPrice, int quantity, BigDecimal lineTotal) {}
-    public record OrderResponse(Long id, Long serviceSessionId, Long reservationId, String reservationCode, String customerName,
-                                List<String> tableCodes, DiningOrderStatus status, OrderSource source, String note, Instant createdAt,
-                                Instant updatedAt, List<ItemResponse> items, BigDecimal total) {}
+    public record ItemRequest(@NotNull Long menuItemId,@Min(1)@Max(50)int quantity){}
+    public record CreateRequest(@NotEmpty@Size(max=30)List<@Valid ItemRequest>items,@Size(max=500)String note){}
+    public record StatusRequest(@NotNull DiningOrderStatus status){}
+    public record ItemStatusRequest(@NotNull DiningOrderItemStatus status,@Min(1)@Max(180)Integer delayMinutes,@Size(max=300)String reason){}
+    public record ItemResponse(Long id,Long menuItemId,String itemName,BigDecimal unitPrice,int quantity,BigDecimal lineTotal,
+                               DiningOrderItemStatus status,Integer preparationMinutes,Instant estimatedReadyAt,
+                               Instant startedAt,Instant delayedUntil,String delayReason,Instant readyAt,Instant servedAt){}
+    public record OrderResponse(Long id,Long serviceSessionId,Long reservationId,String reservationCode,String customerName,
+                                List<String>tableCodes,DiningOrderStatus status,OrderSource source,String note,Instant createdAt,
+                                Instant updatedAt,List<ItemResponse>items,BigDecimal total){}
 }

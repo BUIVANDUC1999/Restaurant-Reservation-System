@@ -17,4 +17,6 @@ public class StaffOrderController {
     public DiningOrderDtos.OrderResponse serve(@PathVariable Long id){return service.serve(id);}
     @PatchMapping("/orders/{id}/cancel")
     public DiningOrderDtos.OrderResponse cancel(@PathVariable Long id){return service.cancel(id);}
+    @PatchMapping("/order-items/{id}/served")
+    public DiningOrderDtos.OrderResponse serveItem(@PathVariable Long id){return service.itemStatus(id,new DiningOrderDtos.ItemStatusRequest(DiningOrderItemStatus.SERVED,null,null));}
 }
