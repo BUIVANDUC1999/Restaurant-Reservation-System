@@ -62,3 +62,13 @@ app:
     kitchen-critical-overdue-minutes: ${KITCHEN_CRITICAL_OVERDUE_MINUTES:10}
     cleaning-target-minutes: ${CLEANING_TARGET_MINUTES:15}
     monitor-delay-ms: ${TIMEOUT_MONITOR_DELAY_MS:60000}
+  walk-in:
+    default-wait-minutes: ${WALK_IN_DEFAULT_WAIT_MINUTES:30}
+    dining-minutes: ${WALK_IN_DINING_MINUTES:120}
+    wait-critical-grace-minutes: ${WALK_IN_WAIT_CRITICAL_GRACE_MINUTES:5}
+    offer-warning-minutes: ${WALK_IN_OFFER_WARNING_MINUTES:3}
+    offer-expiry-minutes: ${WALK_IN_OFFER_EXPIRY_MINUTES:5}
+    seated-warning-minutes: ${WALK_IN_SEATED_WARNING_MINUTES:7}
+    seated-critical-minutes: ${WALK_IN_SEATED_CRITICAL_MINUTES:10}
+    payment-warning-minutes: ${WALK_IN_PAYMENT_WARNING_MINUTES:3}
+    payment-critical-minutes: ${WALK_IN_PAYMENT_CRITICAL_MINUTES:5}

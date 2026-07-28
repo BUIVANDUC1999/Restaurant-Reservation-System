@@ -26,6 +26,7 @@ public class Reservation {
     private String preferredFloor;
     @Column(length = 1000) private String note;
     @Enumerated(EnumType.STRING) @Column(nullable = false) private ReservationStatus status;
+    @Enumerated(EnumType.STRING) @Column(nullable = false) private ReservationSource source;
     @Column(nullable = false) private Instant createdAt;
     @Column(nullable = false) private Instant holdExpiresAt;
     private Instant confirmedAt;
@@ -42,6 +43,7 @@ public class Reservation {
         this.reservationDate = reservationDate; this.timeSlot = timeSlot; this.reservationTime = reservationTime;
         this.durationMinutes = durationMinutes; this.partySize = partySize;
         this.preferredFloor = preferredFloor; this.note = note; this.status = ReservationStatus.PENDING;
+        this.source = ReservationSource.ONLINE;
         this.createdAt = Instant.now();
         this.holdExpiresAt = this.createdAt.plusSeconds(holdMinutes * 60L);
         this.notifyEmail = notifyEmail && email != null && !email.isBlank();
@@ -58,6 +60,8 @@ public class Reservation {
                 || status == ReservationStatus.NO_SHOW || status == ReservationStatus.EXPIRED)
             this.cancelledAt = now;
     }
+
+    public void markWalkIn() { this.source = ReservationSource.WALK_IN; }
 
     public LocalTime effectiveTime() {
         return reservationTime == null ? ("LUNCH".equals(timeSlot) ? LocalTime.of(11, 0) : LocalTime.of(17, 30)) : reservationTime;

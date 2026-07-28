@@ -102,7 +102,16 @@ public class ReservationService {
     }
 
     public List<ReservationDtos.ReservationResponse> list() {
-        List<Reservation> reservations = repository.findAllByOrderByReservationDateDescCreatedAtDesc();
+        return listInternal(false);
+    }
+
+    public List<ReservationDtos.ReservationResponse> listForService() {
+        return listInternal(true);
+    }
+
+    private List<ReservationDtos.ReservationResponse> listInternal(boolean includeWalkIn) {
+        List<Reservation> reservations = repository.findAllByOrderByReservationDateDescCreatedAtDesc().stream()
+                .filter(r -> includeWalkIn || r.getSource() != ReservationSource.WALK_IN).toList();
         if (reservations.isEmpty()) return List.of();
         Map<Long, List<ReservationItem>> grouped = new HashMap<>();
         itemRepository.findByReservationIdInOrderByIdAsc(reservations.stream().map(Reservation::getId).toList())
@@ -231,7 +240,7 @@ public class ReservationService {
         return new ReservationDtos.ReservationResponse(reservation.getId(), reservation.getCode(), reservation.getCustomerName(),
                 reservation.getPhone(), reservation.getEmail(), reservation.getReservationDate(), reservation.getTimeSlot(),
                 reservation.getPartySize(),reservation.effectiveTime(),reservation.effectiveDurationMinutes(),reservation.getHoldExpiresAt(),
-                reservation.getPreferredFloor(), reservation.getNote(), reservation.getStatus(),
+                reservation.getPreferredFloor(), reservation.getNote(), reservation.getStatus(), reservation.getSource(),
                 reservation.getCreatedAt(),reservation.getConfirmedAt(),reservation.getCheckedInAt(),reservation.getCompletedAt(),
                 reservation.isNotifyEmail(),reservation.isNotifySms(),itemResponses, assignedResponses, sessionId, openOrderCount, paid,
                 deposit==null?java.math.BigDecimal.ZERO:deposit.getAmount(),deposit==null?DepositStatus.PENDING:deposit.getStatus(),

@@ -64,7 +64,8 @@ public class NotificationService {
     public void scheduleReminders() {
         LocalDate today=LocalDate.now(ZONE); LocalDateTime now=LocalDateTime.now(ZONE);
         List<Reservation> active=reservations.findByReservationDateAndStatusIn(today,
-                List.of(ReservationStatus.PENDING,ReservationStatus.CONFIRMED));
+                List.of(ReservationStatus.PENDING,ReservationStatus.CONFIRMED)).stream()
+                .filter(r->r.getSource()!=ReservationSource.WALK_IN).toList();
         for(Reservation r:active){
             LocalDateTime arrival=LocalDateTime.of(r.getReservationDate(),r.effectiveTime());
             long minutes=Duration.between(now,arrival).toMinutes();

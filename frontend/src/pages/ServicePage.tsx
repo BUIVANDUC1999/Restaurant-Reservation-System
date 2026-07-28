@@ -25,7 +25,7 @@ export default function ServicePage() {
 
   async function load() {
     try {
-      const [all, dishes] = await Promise.all([api.staffReservations(), api.menu()]);
+      const [all, dishes] = await Promise.all([api.staffServiceReservations(), api.menu()]);
       const active = all.filter(row => row.status === 'CHECKED_IN' && row.serviceSessionId);
       const pairs = await Promise.all(active.map(async row =>
         [row.id, await api.sessionOrders(row.serviceSessionId!)] as const));

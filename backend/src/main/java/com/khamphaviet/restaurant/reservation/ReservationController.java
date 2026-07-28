@@ -31,6 +31,7 @@ public class ReservationController {
     @PostMapping("/reservations") public ReservationDtos.ReservationResponse create(@Valid @RequestBody ReservationDtos.CreateRequest request) { return service.create(request); }
     @GetMapping("/reservations/lookup") public ReservationDtos.ReservationResponse lookup(@RequestParam String code, @RequestParam String phone) { return service.lookup(code, phone); }
     @GetMapping("/staff/reservations") public List<ReservationDtos.ReservationResponse> list() { return service.list(); }
+    @GetMapping("/staff/service-reservations") public List<ReservationDtos.ReservationResponse> serviceList() { return service.listForService(); }
     @PatchMapping("/staff/reservations/{id}/status") public ReservationDtos.ReservationResponse status(@PathVariable Long id, @Valid @RequestBody ReservationDtos.StatusRequest request) { return service.updateStatus(id, request.status()); }
     @PostMapping("/staff/reservations/{id}/preorder/confirm") public ReservationDtos.ReservationResponse confirmPreOrder(@PathVariable Long id) { return service.confirmPreOrder(id); }
     @PutMapping("/staff/reservations/{id}/tables") public ReservationDtos.ReservationResponse assignTables(@PathVariable Long id, @Valid @RequestBody ReservationDtos.AssignTablesRequest request) { return service.assignTables(id, request.tableIds()); }

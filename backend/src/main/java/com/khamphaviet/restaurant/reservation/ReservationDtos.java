@@ -39,7 +39,7 @@ public final class ReservationDtos {
             Long id, String code, String customerName, String phone, String email,
             LocalDate reservationDate, String timeSlot, Integer partySize,
             LocalTime reservationTime, Integer durationMinutes, Instant holdExpiresAt,
-            String preferredFloor, String note, ReservationStatus status,
+            String preferredFloor, String note, ReservationStatus status, ReservationSource source,
             Instant createdAt, Instant confirmedAt, Instant checkedInAt, Instant completedAt,
             boolean notifyEmail, boolean notifySms,
             List<PreOrderItemResponse> preOrderItems, List<AssignedTableResponse> assignedTables,

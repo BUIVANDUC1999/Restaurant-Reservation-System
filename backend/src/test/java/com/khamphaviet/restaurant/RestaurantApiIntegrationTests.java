@@ -165,4 +165,53 @@ class RestaurantApiIntegrationTests {
         mvc.perform(post("/api/v1/reservations").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(later)))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void staffCanOrchestrateWalkInFromQueueToSeatedTable() throws Exception {
+        var loginResult=mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"staff@khamphaviet.vn\",\"password\":\"Staff@123\"}"))
+                .andExpect(status().isOk()).andReturn();
+        String token=objectMapper.readTree(loginResult.getResponse().getContentAsString()).get("accessToken").asText();
+
+        var created=mvc.perform(post("/api/v1/staff/walk-ins")
+                        .header("Authorization","Bearer "+token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerName":"Khach tai quan","phone":"0987111222","partySize":2,
+                                 "priority":"NORMAL","quotedWaitMinutes":0,"note":"Kiem thu walk-in"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("WAITING"))
+                .andExpect(jsonPath("$.slaLevel").exists())
+                .andExpect(jsonPath("$.suggestedTables[0].safe").value(true))
+                .andReturn();
+        JsonNode visit=objectMapper.readTree(created.getResponse().getContentAsString());
+        long visitId=visit.get("id").asLong();
+        long tableId=visit.get("suggestedTables").get(0).get("id").asLong();
+
+        mvc.perform(post("/api/v1/staff/walk-ins/"+visitId+"/offer")
+                        .header("Authorization","Bearer "+token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("tableId",tableId))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("TABLE_OFFERED"))
+                .andExpect(jsonPath("$.reservationId").isNumber())
+                .andExpect(jsonPath("$.offerExpiresAt").exists());
+
+        mvc.perform(post("/api/v1/staff/walk-ins/"+visitId+"/seat")
+                        .header("Authorization","Bearer "+token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SEATED"))
+                .andExpect(jsonPath("$.serviceSessionId").isNumber())
+                .andExpect(jsonPath("$.events.length()").value(3));
+
+        mvc.perform(get("/api/v1/staff/walk-ins/metrics")
+                        .header("Authorization","Bearer "+token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalVisits").isNumber())
+                .andExpect(jsonPath("$.quoteAccuracyPercent").isNumber());
+    }
 }

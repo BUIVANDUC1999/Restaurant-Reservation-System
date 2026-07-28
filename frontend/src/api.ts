@@ -1,4 +1,4 @@
-import type {AuthUser,AvailableTable,Checkout,DepositQr,DiningOrder,GuestTable,MenuItem,Notification,OperationalTimeout,OperationsReport,PayPalConfig,PayPalOrder,Reservation,RestaurantTable,TableOverview,TableRequest,TimeoutPolicy,UserStats,UserSummary} from './types'
+import type {AuthUser,AvailableTable,Checkout,DepositQr,DiningOrder,GuestTable,MenuItem,Notification,OperationalTimeout,OperationsReport,PayPalConfig,PayPalOrder,Reservation,RestaurantTable,TableOverview,TableRequest,TimeoutPolicy,UserStats,UserSummary,WalkInMetrics,WalkInVisit} from './types'
 const BASE=import.meta.env.VITE_API_URL||'/api/v1'
 const token=()=>{try{return JSON.parse(localStorage.getItem('restaurant_auth')||'null')?.accessToken}catch{return null}}
 async function request<T>(path:string,options?:RequestInit):Promise<T>{const auth=token();const response=await fetch(`${BASE}${path}`,{headers:{'Content-Type':'application/json',...(auth?{Authorization:`Bearer ${auth}`}:{}) ,...options?.headers},...options});const text=await response.text();let data:null|Record<string,unknown>=null;try{data=text?JSON.parse(text):null}catch{data=null}if(!response.ok)throw new Error(typeof data?.message==='string'?data.message:(response.status===401||response.status===403?'Phiên đăng nhập không hợp lệ':'Có lỗi xảy ra'));return data as T}
@@ -22,6 +22,7 @@ export const api={
   createDepositPayPal:(code:string,phone:string)=>request<PayPalOrder>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/orders`,{method:'POST',body:JSON.stringify({phone})}),
   captureDepositPayPal:(code:string,phone:string,orderId:string)=>request<unknown>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/orders/capture`,{method:'POST',body:JSON.stringify({phone,orderId})}),
   staffReservations:()=>request<Reservation[]>('/staff/reservations'),
+  staffServiceReservations:()=>request<Reservation[]>('/staff/service-reservations'),
   updateStatus:(id:number,status:string)=>request<Reservation>(`/staff/reservations/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
   confirmPreOrder:(id:number)=>request<Reservation>(`/staff/reservations/${id}/preorder/confirm`,{method:'POST'}),
   assignTables:(id:number,tableIds:number[])=>request<Reservation>(`/staff/reservations/${id}/tables`,{method:'PUT',body:JSON.stringify({tableIds})}),
@@ -46,6 +47,13 @@ export const api={
   timeouts:()=>request<OperationalTimeout[]>('/staff/timeouts'),
   timeoutPolicy:()=>request<TimeoutPolicy>('/staff/timeouts/policy'),
   resolveTimeout:(id:number,note='Đã xử lý')=>request<OperationalTimeout>(`/staff/timeouts/${id}/resolve`,{method:'PATCH',body:JSON.stringify({note})}),
+  walkIns:()=>request<WalkInVisit[]>('/staff/walk-ins'),
+  walkInMetrics:()=>request<WalkInMetrics>('/staff/walk-ins/metrics'),
+  createWalkIn:(body:unknown)=>request<WalkInVisit>('/staff/walk-ins',{method:'POST',body:JSON.stringify(body)}),
+  reviseWalkInQuote:(id:number,quotedWaitMinutes:number,note='')=>request<WalkInVisit>(`/staff/walk-ins/${id}/quote`,{method:'PATCH',body:JSON.stringify({quotedWaitMinutes,note})}),
+  offerWalkInTable:(id:number,tableId:number,note='')=>request<WalkInVisit>(`/staff/walk-ins/${id}/offer`,{method:'POST',body:JSON.stringify({tableId,note})}),
+  walkInAction:(id:number,action:string,body:unknown={})=>request<WalkInVisit>(`/staff/walk-ins/${id}/${action}`,{method:'POST',body:JSON.stringify(body)}),
+  exitWalkIn:(id:number,status:string,note='')=>request<WalkInVisit>(`/staff/walk-ins/${id}/exit/${status}`,{method:'POST',body:JSON.stringify({note})}),
   guestTable:(token:string)=>request<GuestTable>(`/table-guest/${encodeURIComponent(token)}`),
   createTableRequest:(token:string,type:string,note:string)=>request<TableRequest>(`/table-guest/${encodeURIComponent(token)}/requests`,{method:'POST',body:JSON.stringify({type,note})}),
   checkouts:()=>request<Checkout[]>('/staff/checkouts'),

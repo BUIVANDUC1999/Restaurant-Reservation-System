@@ -60,6 +60,14 @@ cd frontend && npm ci && npm run lint && npm run build
 - Trung tâm timeout lưu lịch sử đang mở/đã xử lý cho giữ bàn chưa cọc, khách trễ, món quá SLA, QR chưa được nhận và bàn dọn quá lâu. Chỉ lượt giữ chưa cọc tự hết hạn; khách đã xác nhận không bị tự động hủy.
 - Toàn bộ ngưỡng thời gian cấu hình tập trung bằng các biến `*_MINUTES` trong `.env.example`.
 
+## Điều phối khách tại quán (Walk-in)
+
+- Module `/staff/walk-in` tách riêng khách đến trực tiếp khỏi danh sách đặt bàn online.
+- Mỗi lượt có mã `WI-*`, ETA, mức ưu tiên có lý do, cảnh báo SLA và timeline lưu người thao tác.
+- Hệ thống đề xuất bàn theo sức chứa/khu vực/thời điểm sẵn sàng và từ chối bàn có lịch online sắp tới.
+- Luồng chuẩn: chờ bàn → mời khách → vào bàn → dùng bữa → thanh toán → dọn bàn → hoàn thành.
+- Khi khách vào bàn, module dùng chung phiên gọi món, bếp, QR tại bàn và thanh toán của hệ thống.
+
 ### Gmail và SMS Sandbox
 
 Gmail mặc định tắt. Bật bằng `EMAIL_NOTIFICATIONS_ENABLED=true`, sau đó cấu hình `MAIL_USERNAME` và `MAIL_PASSWORD` bằng Gmail App Password. Không commit App Password lên Git.

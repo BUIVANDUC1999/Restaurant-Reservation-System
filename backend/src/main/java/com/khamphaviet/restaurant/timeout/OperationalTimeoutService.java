@@ -86,6 +86,7 @@ public class OperationalTimeoutService {
 
     private void monitorLateCustomers(Instant now) {
         for (Reservation reservation : reservations.findByStatusIn(List.of(ReservationStatus.CONFIRMED))) {
+            if (reservation.getSource() == ReservationSource.WALK_IN) continue;
             Instant arrival = LocalDateTime.of(reservation.getReservationDate(), reservation.effectiveTime())
                     .atZone(ZONE).toInstant();
             long lateMinutes = Duration.between(arrival, now).toMinutes();
