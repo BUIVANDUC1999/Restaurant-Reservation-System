@@ -94,7 +94,16 @@ public class DiningOrderService {
                             "Bếp báo chậm món",item.getItemNameSnapshot()+" chậm "+request.delayMinutes()+" phút"
                                     +(request.reason()==null?"":" – "+request.reason()),"kitchen-delay-"+item.getId()+"-"+item.getDelayedUntil());
                 }
-                case READY->item.ready();
+                case READY->{
+                    item.ready();
+                    ServiceSession session=activeSession(order.getServiceSessionId());
+                    Reservation reservation=reservations.findById(session.getReservationId()).orElseThrow();
+                    String tableLabel=tableCodes(reservation.getId()).stream().collect(java.util.stream.Collectors.joining(", "));
+                    notifications.createStaffAlert(reservation.getId(),NotificationType.DISH_READY,
+                            "Món đã xong · "+tableLabel,
+                            item.getQuantity()+"× "+item.getItemNameSnapshot()+" đã được bếp báo xong. Nhân viên mang món lên bàn.",
+                            "dish-ready-"+item.getId());
+                }
                 case SERVED->item.served();
                 default->throw new BusinessException("Trạng thái món không hợp lệ");
             }
@@ -120,7 +129,7 @@ public class DiningOrderService {
     private ServiceSession activeSession(Long id){ServiceSession session=sessions.findById(id).orElseThrow(()->new BusinessException("Không tìm thấy phiên phục vụ"));if(session.getStatus()!=ServiceSessionStatus.ACTIVE)throw new BusinessException("Phiên phục vụ đã kết thúc");return session;}
     private DiningOrderDtos.OrderResponse response(DiningOrder order,ServiceSession session){
         Reservation reservation=reservations.findById(session.getReservationId()).orElseThrow();
-        List<String> tableCodes=tables.findAllById(assignments.findByReservationId(reservation.getId()).stream().map(ReservationTableAssignment::getTableId).toList()).stream().map(t->t.getCode()).sorted().toList();
+        List<String> tableCodes=tableCodes(reservation.getId());
         List<DiningOrderDtos.ItemResponse> lines=items.findByOrderIdInOrderByIdAsc(List.of(order.getId())).stream().map(item->{BigDecimal lineTotal=item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));return new DiningOrderDtos.ItemResponse(item.getId(),item.getMenuItemId(),item.getItemNameSnapshot(),item.getUnitPrice(),item.getQuantity(),lineTotal,item.getStatus(),item.getPreparationMinutes(),item.getEstimatedReadyAt(),item.getStartedAt(),item.getDelayedUntil(),item.getDelayReason(),item.getReadyAt(),item.getServedAt());}).toList();
         BigDecimal total=lines.stream().map(DiningOrderDtos.ItemResponse::lineTotal).reduce(BigDecimal.ZERO,BigDecimal::add);
         return new DiningOrderDtos.OrderResponse(order.getId(),order.getServiceSessionId(),reservation.getId(),reservation.getCode(),reservation.getCustomerName(),tableCodes,order.getStatus(),order.getSource(),order.getNote(),order.getCreatedAt(),order.getUpdatedAt(),lines,total);
@@ -132,5 +141,11 @@ public class DiningOrderService {
         else if(lines.stream().allMatch(i->List.of(DiningOrderItemStatus.READY,DiningOrderItemStatus.SERVED).contains(i.getStatus())))order.changeStatus(DiningOrderStatus.READY);
         else if(lines.stream().anyMatch(i->List.of(DiningOrderItemStatus.PREPARING,DiningOrderItemStatus.DELAYED,DiningOrderItemStatus.READY).contains(i.getStatus())))order.changeStatus(DiningOrderStatus.PREPARING);
         else order.changeStatus(DiningOrderStatus.SUBMITTED);
+    }
+
+    private List<String> tableCodes(Long reservationId) {
+        return tables.findAllById(assignments.findByReservationId(reservationId).stream()
+                        .map(ReservationTableAssignment::getTableId).toList())
+                .stream().map(t->t.getCode()).sorted().toList();
     }
 }
