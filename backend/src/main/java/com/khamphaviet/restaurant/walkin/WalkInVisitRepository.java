@@ -4,4 +4,5 @@ import java.util.List;
 public interface WalkInVisitRepository extends JpaRepository<WalkInVisit,Long> {
     List<WalkInVisit> findAllByOrderByArrivedAtDesc();
     List<WalkInVisit> findByStatusIn(List<WalkInStatus> statuses);
+    boolean existsByCustomerNameStartingWith(String prefix);
 }

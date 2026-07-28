@@ -214,4 +214,61 @@ class RestaurantApiIntegrationTests {
                 .andExpect(jsonPath("$.totalVisits").isNumber())
                 .andExpect(jsonPath("$.quoteAccuracyPercent").isNumber());
     }
+
+    @Test
+    void demoScenarioCreatesAllWalkInSlaLevelsOnlyOnce() throws Exception {
+        String token = staffToken();
+        mvc.perform(post("/api/v1/staff/walk-ins/demo-scenario")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.visits").value(4));
+        mvc.perform(post("/api/v1/staff/walk-ins/demo-scenario")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.created").value(false));
+        mvc.perform(get("/api/v1/staff/walk-ins").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.customerName == '[DEMO] Khách chờ quá lâu')].slaLevel").value("CRITICAL"));
+    }
+
+    @Test
+    void sameWalkInTableCannotBeOfferedTwice() throws Exception {
+        String token = staffToken();
+        long first = createWalkIn(token, "Tranh chấp bàn A");
+        var secondResult = mvc.perform(post("/api/v1/staff/walk-ins")
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerName":"Tranh chấp bàn B","phone":"0987000002","partySize":2,
+                                 "priority":"NORMAL","quotedWaitMinutes":0}
+                                """))
+                .andExpect(status().isOk()).andReturn();
+        JsonNode second = objectMapper.readTree(secondResult.getResponse().getContentAsString());
+        long secondId = second.get("id").asLong();
+        long tableId = second.get("suggestedTables").get(0).get("id").asLong();
+        mvc.perform(post("/api/v1/staff/walk-ins/" + first + "/offer")
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("tableId", tableId))))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/staff/walk-ins/" + secondId + "/offer")
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("tableId", tableId))))
+                .andExpect(status().isConflict());
+    }
+
+    private String staffToken() throws Exception {
+        var result = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"staff@khamphaviet.vn\",\"password\":\"Staff@123\"}"))
+                .andExpect(status().isOk()).andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("accessToken").asText();
+    }
+
+    private long createWalkIn(String token, String name) throws Exception {
+        var result = mvc.perform(post("/api/v1/staff/walk-ins")
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "customerName", name, "phone", "0987000001", "partySize", 2,
+                                "priority", "NORMAL", "quotedWaitMinutes", 0))))
+                .andExpect(status().isOk()).andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
+    }
 }

@@ -58,6 +58,9 @@ cd frontend && npm ci && npm run lint && npm run build
 - Khi bếp bấm **Báo món xong**, hệ thống gửi thông báo kèm tên món và bàn; trang phục vụ hiển thị danh sách từng món chờ mang lên để nhân viên xác nhận riêng.
 - Bộ lập lịch kiểm tra mỗi phút để cảnh báo lịch mới, khách sắp đến 30 phút và khách trễ 15/20 phút.
 - Trung tâm timeout lưu lịch sử đang mở/đã xử lý cho giữ bàn chưa cọc, khách trễ, món quá SLA, QR chưa được nhận và bàn dọn quá lâu. Chỉ lượt giữ chưa cọc tự hết hạn; khách đã xác nhận không bị tự động hủy.
+- Mỗi timeout có người phụ trách, thao tác nhận việc/chuyển việc/xác nhận/hoàn tất và nhật ký truy vết người thực hiện.
+- Các màn hình bàn, phục vụ, bếp và walk-in nhận sự kiện realtime qua SSE; polling vẫn chạy dự phòng khi kết nối bị gián đoạn.
+- Đặt bàn và xếp khách khóa bàn ở tầng cơ sở dữ liệu; thanh toán thường/PayPal có idempotency để tránh hai nhân viên thao tác trùng.
 - Toàn bộ ngưỡng thời gian cấu hình tập trung bằng các biến `*_MINUTES` trong `.env.example`.
 
 ## Điều phối khách tại quán (Walk-in)
@@ -67,6 +70,7 @@ cd frontend && npm ci && npm run lint && npm run build
 - Hệ thống đề xuất bàn theo sức chứa/khu vực/thời điểm sẵn sàng và từ chối bàn có lịch online sắp tới.
 - Luồng chuẩn: chờ bàn → mời khách → vào bàn → dùng bữa → thanh toán → dọn bàn → hoàn thành.
 - Khi khách vào bàn, module dùng chung phiên gọi món, bếp, QR tại bàn và thanh toán của hệ thống.
+- Trong profile `demo`, nút **Tạo tình huống demo** sinh một lần các nhóm NORMAL/WARNING/CRITICAL và khách ưu tiên để kiểm thử nhanh. Production mặc định khóa công cụ này.
 
 ### Gmail và SMS Sandbox
 

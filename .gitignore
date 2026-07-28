@@ -10,3 +10,4 @@ mobile/.dart_tool/
 mobile/build/
 mobile/.flutter-plugins*
 .env
+*.log

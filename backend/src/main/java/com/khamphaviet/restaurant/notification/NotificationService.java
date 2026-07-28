@@ -12,6 +12,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import com.khamphaviet.restaurant.timeout.OperationalTimePolicy;
+import com.khamphaviet.restaurant.operations.StaffEventService;
 
 @Service
 public class NotificationService {
@@ -24,15 +25,17 @@ public class NotificationService {
     private final boolean smsSandbox;
     private final String mailFrom;
     private final OperationalTimePolicy timePolicy;
+    private final StaffEventService staffEvents;
 
     public NotificationService(OperationalNotificationRepository notifications, ReservationRepository reservations,
                                JavaMailSender mailSender,
                                @Value("${app.notifications.email-enabled:false}") boolean emailEnabled,
                                @Value("${app.notifications.sms-sandbox:true}") boolean smsSandbox,
                                @Value("${spring.mail.username:no-reply@khamphaviet.local}") String mailFrom,
-                               OperationalTimePolicy timePolicy) {
+                               OperationalTimePolicy timePolicy, StaffEventService staffEvents) {
         this.notifications=notifications;this.reservations=reservations;this.mailSender=mailSender;
         this.emailEnabled=emailEnabled;this.smsSandbox=smsSandbox;this.mailFrom=mailFrom;this.timePolicy=timePolicy;
+        this.staffEvents=staffEvents;
     }
 
     @Transactional
@@ -91,12 +94,17 @@ public class NotificationService {
     }
 
     private void queue(Reservation r,NotificationType type,NotificationChannel channel,String recipient,String title,String message,String key){
-        if(!notifications.existsByDedupeKey(key))notifications.save(new OperationalNotification(r.getId(),type,channel,recipient,title,message,key));
+        if(!notifications.existsByDedupeKey(key)) {
+            notifications.save(new OperationalNotification(r.getId(),type,channel,recipient,title,message,key));
+            if(channel==NotificationChannel.IN_APP) staffEvents.publish(type.name(),title,message,r.getId());
+        }
     }
 
     public OperationalNotification createStaffAlert(Long reservationId,NotificationType type,String title,String message,String key){
         if(notifications.existsByDedupeKey(key))return null;
-        return notifications.save(new OperationalNotification(reservationId,type,NotificationChannel.IN_APP,"NHÂN VIÊN",title,message,key));
+        OperationalNotification saved=notifications.save(new OperationalNotification(reservationId,type,NotificationChannel.IN_APP,"NHÂN VIÊN",title,message,key));
+        staffEvents.publish(type.name(),title,message,reservationId);
+        return saved;
     }
 
     public List<OperationalNotification> staffFeed(){return notifications.findTop100ByChannelOrderByCreatedAtDesc(NotificationChannel.IN_APP);}

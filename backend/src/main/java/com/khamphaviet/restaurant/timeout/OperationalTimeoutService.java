@@ -19,6 +19,7 @@ import java.util.List;
 public class OperationalTimeoutService {
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private final OperationalTimeoutRepository timeouts;
+    private final OperationalTimeoutEventRepository timeoutEvents;
     private final OperationalTimePolicy policy;
     private final ReservationRepository reservations;
     private final ReservationDepositRepository deposits;
@@ -28,12 +29,14 @@ public class OperationalTimeoutService {
     private final RestaurantTableRepository tables;
     private final NotificationService notifications;
 
-    public OperationalTimeoutService(OperationalTimeoutRepository timeouts, OperationalTimePolicy policy,
+    public OperationalTimeoutService(OperationalTimeoutRepository timeouts,
+                                     OperationalTimeoutEventRepository timeoutEvents, OperationalTimePolicy policy,
                                      ReservationRepository reservations, ReservationDepositRepository deposits,
                                      ReservationTableAssignmentRepository assignments,
                                      DiningOrderItemRepository orderItems, TableServiceRequestRepository serviceRequests,
                                      RestaurantTableRepository tables, NotificationService notifications) {
-        this.timeouts = timeouts; this.policy = policy; this.reservations = reservations; this.deposits = deposits;
+        this.timeouts = timeouts; this.timeoutEvents = timeoutEvents; this.policy = policy;
+        this.reservations = reservations; this.deposits = deposits;
         this.assignments = assignments; this.orderItems = orderItems; this.serviceRequests = serviceRequests;
         this.tables = tables; this.notifications = notifications;
     }
@@ -47,11 +50,45 @@ public class OperationalTimeoutService {
     }
 
     @Transactional
-    public OperationalTimeout resolve(Long id, String note) {
+    public OperationalTimeout resolve(Long id, String note, String actor) {
         OperationalTimeout timeout = timeouts.findById(id)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy cảnh báo quá hạn"));
-        timeout.resolve(note);
+        timeout.resolve(note, actor);
+        event(timeout, "RESOLVED", actor, timeout.getAssignedTo(), timeout.getAssignedTo(), note);
         return timeout;
+    }
+
+    @Transactional
+    public OperationalTimeout assign(Long id, String assignee, String note, String actor) {
+        if (assignee == null || assignee.isBlank()) throw new BusinessException("Cần chọn người phụ trách");
+        OperationalTimeout timeout = find(id);
+        String previous = timeout.getAssignedTo();
+        timeout.assign(assignee);
+        event(timeout, previous == null ? "ASSIGNED" : "TRANSFERRED", actor, previous, assignee, note);
+        return timeout;
+    }
+
+    @Transactional
+    public OperationalTimeout acknowledge(Long id, String actor) {
+        OperationalTimeout timeout = find(id);
+        String previous = timeout.getAssignedTo();
+        timeout.acknowledge(actor);
+        event(timeout, "ACKNOWLEDGED", actor, previous, timeout.getAssignedTo(), null);
+        return timeout;
+    }
+
+    public List<OperationalTimeoutEvent> events(Long id) {
+        find(id);
+        return timeoutEvents.findByTimeoutIdOrderByCreatedAtDesc(id);
+    }
+
+    private OperationalTimeout find(Long id) {
+        return timeouts.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy cảnh báo quá hạn"));
+    }
+
+    private void event(OperationalTimeout timeout, String action, String actor,
+                       String from, String to, String note) {
+        timeoutEvents.save(new OperationalTimeoutEvent(timeout.getId(), action, actor, from, to, note));
     }
 
     @Scheduled(fixedDelayString = "${app.timeouts.monitor-delay-ms:60000}", initialDelayString = "15000")

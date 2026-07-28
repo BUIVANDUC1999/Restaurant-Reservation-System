@@ -1,6 +1,7 @@
 package com.khamphaviet.restaurant.walkin;
 
 import com.khamphaviet.restaurant.common.BusinessException;
+import com.khamphaviet.restaurant.common.ConflictException;
 import com.khamphaviet.restaurant.notification.*;
 import com.khamphaviet.restaurant.order.DiningOrderRepository;
 import com.khamphaviet.restaurant.reservation.*;
@@ -10,6 +11,8 @@ import com.khamphaviet.restaurant.timeout.OperationalTimePolicy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.security.SecureRandom;
 import java.time.*;
@@ -31,17 +34,41 @@ public class WalkInService {
     private final ServiceSessionRepository sessions;
     private final DiningOrderRepository orders;
     private final NotificationService notifications;
+    private final JdbcTemplate jdbc;
+    private final boolean demoToolsEnabled;
     private final SecureRandom random = new SecureRandom();
 
     public WalkInService(WalkInVisitRepository visits, WalkInEventRepository events, WalkInPolicy policy,
                          OperationalTimePolicy timePolicy, RestaurantTableRepository tables,
                          ReservationRepository reservations, ReservationTableAssignmentRepository assignments,
                          ReservationService reservationService, ServiceSessionRepository sessions,
-                         DiningOrderRepository orders, NotificationService notifications) {
+                         DiningOrderRepository orders, NotificationService notifications, JdbcTemplate jdbc,
+                         @Value("${app.demo-tools.enabled:false}") boolean demoToolsEnabled) {
         this.visits=visits;this.events=events;this.policy=policy;this.timePolicy=timePolicy;this.tables=tables;
         this.reservations=reservations;this.assignments=assignments;this.reservationService=reservationService;
-        this.sessions=sessions;this.orders=orders;this.notifications=notifications;
+        this.sessions=sessions;this.orders=orders;this.notifications=notifications;this.jdbc=jdbc;
+        this.demoToolsEnabled=demoToolsEnabled;
     }
+
+    @Transactional
+    public DemoScenarioResponse createDemoScenario(String actor) {
+        if (!demoToolsEnabled) throw new BusinessException("Công cụ tạo tình huống chỉ bật trong môi trường demo");
+        if (visits.existsByCustomerNameStartingWith("[DEMO]"))
+            return new DemoScenarioResponse(false, visits.count(), "Dữ liệu demo đã tồn tại; khởi động lại backend để làm mới.");
+        var normal=create(new WalkInDtos.CreateRequest("[DEMO] Gia đình An","0901000001",4,"Sảnh chính",
+                WalkInPriority.NORMAL,null,20,"Đang chờ đúng ETA"),actor);
+        var warning=create(new WalkInDtos.CreateRequest("[DEMO] Nhóm sắp quá SLA","0901000002",3,null,
+                WalkInPriority.NORMAL,null,10,"Cần chủ động cập nhật thời gian"),actor);
+        var critical=create(new WalkInDtos.CreateRequest("[DEMO] Khách chờ quá lâu","0901000003",2,"Cửa sổ",
+                WalkInPriority.NORMAL,null,5,"Tình huống khẩn cấp để test"),actor);
+        create(new WalkInDtos.CreateRequest("[DEMO] Khách cao tuổi","0901000004",2,null,
+                WalkInPriority.ELDERLY,"Ưu tiên chỗ ngồi dễ di chuyển",15,"Kiểm tra quy tắc ưu tiên"),actor);
+        jdbc.update("update walk_in_visits set arrived_at=dateadd('MINUTE',-12,current_timestamp), expected_seat_at=dateadd('MINUTE',-2,current_timestamp) where id=?", warning.id());
+        jdbc.update("update walk_in_visits set arrived_at=dateadd('MINUTE',-30,current_timestamp), expected_seat_at=dateadd('MINUTE',-20,current_timestamp) where id=?", critical.id());
+        return new DemoScenarioResponse(true,4,"Đã tạo hàng chờ NORMAL, WARNING, CRITICAL và nhóm ưu tiên.");
+    }
+
+    public record DemoScenarioResponse(boolean created,long visits,String message) {}
 
     @Transactional
     public WalkInDtos.VisitResponse create(WalkInDtos.CreateRequest request, String actor) {
@@ -95,12 +122,14 @@ public class WalkInService {
     @Transactional
     public WalkInDtos.VisitResponse offer(Long id,WalkInDtos.OfferRequest request,String actor){
         WalkInVisit visit=find(id);require(visit,WalkInStatus.WAITING);
-        RestaurantTable table=tables.findById(request.tableId()).orElseThrow(()->new BusinessException("Không tìm thấy bàn"));
+        RestaurantTable table=tables.findByIdForUpdate(request.tableId()).orElseThrow(()->new BusinessException("Không tìm thấy bàn"));
+        if(table.getStatus()!=TableStatus.AVAILABLE)
+            throw new ConflictException("Bàn "+table.getCode()+" vừa được nhân viên khác giữ hoặc xếp khách");
         WalkInDtos.SuggestedTable suggestion=suggestions(visit.getPartySize(),visit.getAreaPreference()).stream()
                 .filter(item->item.id().equals(table.getId())).findFirst()
                 .orElseThrow(()->new BusinessException("Bàn không phù hợp hoặc đang được sử dụng"));
         if(!suggestion.safe()||suggestion.availableAt().isAfter(Instant.now().plusSeconds(30)))
-            throw new BusinessException(suggestion.reason());
+            throw new ConflictException(suggestion.reason());
         Reservation backing=new Reservation(visit.getCode(),visit.getCustomerName(),
                 visit.getPhone()==null||visit.getPhone().isBlank()?"0000000000":visit.getPhone(),null,
                 LocalDate.now(),LocalTime.now().isBefore(LocalTime.of(15,0))?"LUNCH":"DINNER",

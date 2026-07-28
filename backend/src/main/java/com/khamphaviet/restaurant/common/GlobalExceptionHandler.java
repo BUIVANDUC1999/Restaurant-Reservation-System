@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<?> business(BusinessException ex) { return error(HttpStatus.BAD_REQUEST, ex.getMessage(), Map.of()); }
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<?> businessConflict(ConflictException ex) { return error(HttpStatus.CONFLICT, ex.getMessage(), Map.of()); }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> validation(MethodArgumentNotValidException ex) {
@@ -28,12 +30,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({ObjectOptimisticLockingFailureException.class, ConcurrencyFailureException.class})
     public ResponseEntity<?> concurrent(RuntimeException ex) {
-        return error(HttpStatus.CONFLICT, "The data changed during this operation. Please reload and try again", Map.of());
+        return error(HttpStatus.CONFLICT, "Dữ liệu vừa được nhân viên khác cập nhật. Vui lòng tải lại và thử lại", Map.of());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<?> conflict(DataIntegrityViolationException ex) {
-        return error(HttpStatus.CONFLICT, "The submitted data conflicts with an existing record", Map.of());
+        return error(HttpStatus.CONFLICT, "Thao tác bị trùng hoặc xung đột với dữ liệu hiện có", Map.of());
     }
 
     private ResponseEntity<?> error(HttpStatus status, String message, Map<String, String> fields) {

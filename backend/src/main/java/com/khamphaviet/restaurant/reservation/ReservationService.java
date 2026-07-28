@@ -77,7 +77,7 @@ public class ReservationService {
         var available = availability(request.reservationDate(), request.timeSlot(), request.partySize());
         if (!available.available()) throw new BusinessException("Không còn đủ chỗ cho số khách đã chọn");
         List<RestaurantTable> selected=request.selectedTableIds()==null||request.selectedTableIds().isEmpty()?List.of():
-                schedulingService.validateSelection(request.reservationDate(),reservationTime,duration,request.partySize(),request.selectedTableIds(),null);
+                lockedSelection(request.reservationDate(),reservationTime,duration,request.partySize(),request.selectedTableIds(),null);
         Reservation reservation = repository.save(new Reservation(nextCode(), request.customerName().trim(), request.phone().trim(),
                 request.email(), request.reservationDate(), request.timeSlot(), reservationTime, duration, request.partySize(),
                 "GROUND_FLOOR", request.note(), Boolean.TRUE.equals(request.notifyEmail()), !Boolean.FALSE.equals(request.notifySms()),
@@ -149,7 +149,7 @@ public class ReservationService {
         if (List.of(ReservationStatus.CHECKED_IN, ReservationStatus.COMPLETED, ReservationStatus.CANCELLED, ReservationStatus.REJECTED).contains(reservation.getStatus()))
             throw new BusinessException("Không thể đổi bàn ở trạng thái hiện tại");
         List<Long> tableIds = requestedTableIds.stream().distinct().toList();
-        List<RestaurantTable> selectedTables = schedulingService.validateSelection(reservation.getReservationDate(),
+        List<RestaurantTable> selectedTables = lockedSelection(reservation.getReservationDate(),
                 reservation.effectiveTime(),reservation.effectiveDurationMinutes(),reservation.getPartySize(),tableIds,id);
         List<ReservationTableAssignment> current = assignmentRepository.findByReservationId(id);
         var currentIds = current.stream().map(ReservationTableAssignment::getTableId).collect(java.util.stream.Collectors.toSet());
@@ -222,6 +222,14 @@ public class ReservationService {
         tables.forEach(table -> table.changeStatus(TableStatus.AVAILABLE));
         tableRepository.saveAll(tables);
         assignmentRepository.deleteAll(assignments);
+    }
+
+    private List<RestaurantTable> lockedSelection(LocalDate date,LocalTime time,int duration,int partySize,
+                                                   List<Long> requestedIds,Long ignoredReservationId){
+        List<Long> ids=requestedIds.stream().distinct().sorted().toList();
+        if(tableRepository.findAllByIdForUpdate(ids).size()!=ids.size())
+            throw new BusinessException("Có bàn không tồn tại");
+        return schedulingService.validateSelection(date,time,duration,partySize,ids,ignoredReservationId);
     }
 
     private ReservationDtos.ReservationResponse response(Reservation reservation, List<ReservationItem> items) {

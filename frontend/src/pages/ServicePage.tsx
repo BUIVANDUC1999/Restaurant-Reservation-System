@@ -2,6 +2,7 @@ import {AlertTriangle, BellRing, Check, ChefHat, Clock3, Minus, Plus, Search, Se
 import {useEffect, useMemo, useState} from 'react';
 import {api} from '../api';
 import type {DiningOrder, DiningOrderItemStatus, MenuItem, Reservation} from '../types';
+import {useOperationalEvents} from '../hooks/useOperationalEvents';
 
 const itemLabel: Record<DiningOrderItemStatus, string> = {
   SUBMITTED: 'Chờ bếp nhận',
@@ -34,6 +35,7 @@ export default function ServicePage() {
       setError(err instanceof Error ? err.message : 'Không tải được dữ liệu phục vụ');
     }
   }
+  useOperationalEvents(() => void load());
 
   useEffect(() => {
     void load();

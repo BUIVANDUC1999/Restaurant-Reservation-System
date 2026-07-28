@@ -35,6 +35,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 app:
+  demo-tools:
+    enabled: ${DEMO_TOOLS_ENABLED:false}
   jwt:
     secret: ${JWT_SECRET:restaurant-reservation-demo-secret-key-change-in-production-2026}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}

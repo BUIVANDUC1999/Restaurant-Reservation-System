@@ -14,4 +14,7 @@ spring:
     init:
       mode: always
       data-locations: classpath:data-demo.sql
+app:
+  demo-tools:
+    enabled: true
 

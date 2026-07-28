@@ -2,6 +2,8 @@ import {Armchair, BellRing, Check, Clock3, QrCode, Users} from 'lucide-react';
 import {useEffect, useMemo, useState} from 'react';
 import {api} from '../api';
 import type {Notification, OperationalTimeout, TableOverview, TableRequest, TimeoutPolicy} from '../types';
+import {useOperationalEvents} from '../hooks/useOperationalEvents';
+import {useAuth} from '../auth';
 
 const serviceLabels: Record<TableOverview['serviceState'], string> = {
   EMPTY: 'Bàn trống', RESERVED: 'Khách sắp đến', DINING: 'Đang dùng bữa',
@@ -14,6 +16,7 @@ const requestLabels = {
 };
 
 export default function TablesPage() {
+  const {user} = useAuth();
   const [tables, setTables] = useState<TableOverview[]>([]);
   const [requests, setRequests] = useState<TableRequest[]>([]);
   const [alerts, setAlerts] = useState<Notification[]>([]);
@@ -32,6 +35,7 @@ export default function TablesPage() {
       setError(e instanceof Error ? e.message : 'Không tải được dữ liệu vận hành');
     }
   };
+  const realtime = useOperationalEvents(() => void load());
 
   useEffect(() => {
     void load();
@@ -45,11 +49,16 @@ export default function TablesPage() {
   const openTimeouts = useMemo(() => timeouts.filter(t => t.status === 'OPEN'), [timeouts]);
   async function requestAction(id: number, status: string) { await api.updateTableRequest(id, status); await load(); }
   async function resolveTimeout(id: number) { await api.resolveTimeout(id); await load(); }
+  async function acknowledgeTimeout(id: number) { await api.acknowledgeTimeout(id); await load(); }
+  async function transferTimeout(id: number) {
+    const assignee = prompt('Email người nhận việc:');
+    if (assignee) { await api.assignTimeout(id, assignee, 'Điều phối lại từ trung tâm timeout'); await load(); }
+  }
 
   return <section className="tables-page page-section container">
     <div className="staff-heading">
       <div><p className="eyebrow dark">SƠ ĐỒ VẬN HÀNH THỜI GIAN THỰC</p><h1>Nhà hàng · Một tầng</h1></div>
-      <span>Tự làm mới mỗi 10 giây</span>
+      <span>{realtime.connected ? '● Realtime đang kết nối' : 'Tự làm mới mỗi 10 giây'}</span>
     </div>
     {error && <p className="error">{error}</p>}
 
@@ -74,6 +83,12 @@ export default function TablesPage() {
               new Date(item.deadlineAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})
             }</span>
             <b>{item.title}</b><p>{item.details}</p>
+            <small>{item.assignedTo ? `Phụ trách: ${item.assignedTo}` : 'Chưa có người phụ trách'}
+              {item.acknowledgedAt ? ' · đã xác nhận' : ''}</small>
+            {!item.acknowledgedAt && <button onClick={() => acknowledgeTimeout(item.id)}>
+              <Users/> {item.assignedTo ? 'Xác nhận nhận việc' : `Nhận việc (${user?.fullName || 'tôi'})`}
+            </button>}
+            <button onClick={() => transferTimeout(item.id)}>Chuyển người phụ trách</button>
             <button onClick={() => resolveTimeout(item.id)}><Check/> Đánh dấu đã xử lý</button>
           </article>)}</div>}
     </div>

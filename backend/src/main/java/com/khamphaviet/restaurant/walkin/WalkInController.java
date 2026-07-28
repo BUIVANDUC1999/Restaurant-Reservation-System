@@ -12,6 +12,9 @@ public class WalkInController {
     public WalkInController(WalkInService service){this.service=service;}
     @GetMapping public List<WalkInDtos.VisitResponse> list(){return service.list();}
     @GetMapping("/metrics") public WalkInDtos.MetricsResponse metrics(){return service.metrics();}
+    @PostMapping("/demo-scenario") public WalkInService.DemoScenarioResponse demo(Authentication auth){
+        return service.createDemoScenario(auth.getName());
+    }
     @GetMapping("/{id}") public WalkInDtos.VisitResponse get(@PathVariable Long id){return service.get(id);}
     @PostMapping public WalkInDtos.VisitResponse create(@Valid @RequestBody WalkInDtos.CreateRequest request,Authentication auth){return service.create(request,auth.getName());}
     @PatchMapping("/{id}/quote") public WalkInDtos.VisitResponse quote(@PathVariable Long id,@Valid @RequestBody WalkInDtos.ActionRequest request,Authentication auth){

@@ -24,6 +24,11 @@ public class OperationalTimeout {
     @Column(nullable = false) private Instant openedAt;
     private Instant resolvedAt;
     @Column(length = 400) private String resolutionNote;
+    @Column(length = 180) private String assignedTo;
+    private Instant assignedAt;
+    @Column(length = 180) private String acknowledgedBy;
+    private Instant acknowledgedAt;
+    @Column(length = 180) private String resolvedBy;
     @Column(nullable = false, unique = true, length = 220) private String dedupeKey;
 
     public OperationalTimeout(TimeoutType type, TimeoutSeverity severity, String entityType, Long entityId,
@@ -49,9 +54,27 @@ public class OperationalTimeout {
     }
 
     public void resolve(String note) {
+        resolve(note, "SYSTEM");
+    }
+
+    public void assign(String assignee) {
+        assignedTo = assignee.trim();
+        assignedAt = Instant.now();
+    }
+
+    public void acknowledge(String actor) {
+        if (assignedTo == null) assign(actor);
+        acknowledgedBy = actor;
+        acknowledgedAt = Instant.now();
+    }
+
+    public void resolve(String note, String actor) {
         if (status == TimeoutStatus.RESOLVED) return;
+        if (assignedTo == null) assign(actor);
+        if (acknowledgedAt == null) acknowledge(actor);
         status = TimeoutStatus.RESOLVED;
         resolvedAt = Instant.now();
+        resolvedBy = actor;
         resolutionNote = note == null || note.isBlank() ? "Đã xử lý" : note.trim();
     }
 }

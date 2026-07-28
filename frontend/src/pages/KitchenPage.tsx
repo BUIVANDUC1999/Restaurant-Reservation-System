@@ -2,6 +2,7 @@ import {AlertTriangle, BellRing, CheckCircle2, ChefHat, Clock3, Flame, RefreshCw
 import {useEffect, useMemo, useState} from 'react';
 import {api} from '../api';
 import type {DiningOrder, DiningOrderItem, DiningOrderItemStatus} from '../types';
+import {useOperationalEvents} from '../hooks/useOperationalEvents';
 
 const label: Record<DiningOrderItemStatus, string> = {
   SUBMITTED: 'Chờ nấu',
@@ -24,6 +25,7 @@ export default function KitchenPage() {
     try { setOrders(await api.kitchenOrders()); setError(''); }
     catch (e) { setError(e instanceof Error ? e.message : 'Không tải được bảng bếp'); }
   }
+  useOperationalEvents(() => void load());
 
   useEffect(() => {
     void load();

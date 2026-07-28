@@ -97,6 +97,8 @@ public class PayPalSandboxService {
 
     public CheckoutDtos.Checkout captureOrder(Long sessionId, String orderId, BigDecimal discount) {
         ensureEnabled();
+        var completed = checkout.completedExternalPayment(sessionId, orderId);
+        if (completed.isPresent()) return completed.get();
         var draft = checkout.prepareExternalPayment(sessionId, discount);
         BigDecimal expected = toPayPalAmount(draft.total());
         JsonNode response = sendJson("/v2/checkout/orders/" + url(orderId) + "/capture", "POST", "{}", true);

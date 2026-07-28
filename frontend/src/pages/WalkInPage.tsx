@@ -4,6 +4,7 @@ import type {FormEvent} from 'react';
 import {Link} from 'react-router-dom';
 import {api} from '../api';
 import type {WalkInMetrics, WalkInPriority, WalkInStatus, WalkInVisit} from '../types';
+import {useOperationalEvents} from '../hooks/useOperationalEvents';
 
 const statusLabel:Record<WalkInStatus,string>={
   WAITING:'Đang chờ bàn',TABLE_OFFERED:'Đã mời vào bàn',SEATED:'Đã ngồi bàn',DINING:'Đang dùng bữa',
@@ -28,6 +29,7 @@ export default function WalkInPage(){
     try{const[v,m]=await Promise.all([api.walkIns(),api.walkInMetrics()]);setVisits(v);setMetrics(m);setError('')}
     catch(e){setError(e instanceof Error?e.message:'Không tải được hàng chờ')}
   }
+  useOperationalEvents(()=>void load());
   useEffect(()=>{void load();const timer=setInterval(()=>void load(),10000);return()=>clearInterval(timer)},[]);
 
   const active=useMemo(()=>visits.filter(v=>!terminal.includes(v.status)),[visits]);
@@ -54,12 +56,18 @@ export default function WalkInPage(){
     if(value===null)return;const minutes=Number(value);if(!Number.isFinite(minutes)||minutes<0)return;
     void action(visit.id,()=>api.reviseWalkInQuote(visit.id,minutes,'Lễ tân cập nhật ETA'));
   }
+  async function createDemo(){
+    setBusy('demo');setError('');
+    try{const result=await api.createWalkInDemo();alert(result.message);await load()}
+    catch(e){setError(e instanceof Error?e.message:'Không tạo được dữ liệu demo')}
+    finally{setBusy(undefined)}
+  }
 
   return <section className="walkin-page page-section container">
     <div className="walkin-heading">
       <div><p className="eyebrow dark">FRONT-OF-HOUSE ORCHESTRATION</p><h1>Điều phối khách tại quán</h1>
         <p>Hàng chờ, ETA, bảo vệ lịch online và SLA từ lúc khách đến cho tới khi bàn được dọn xong.</p></div>
-      <div><button onClick={()=>void load()}><RefreshCw/> Làm mới</button><button className="walkin-add" onClick={()=>setOpenForm(true)}><Plus/> Tiếp nhận khách</button></div>
+      <div><button disabled={busy==='demo'} onClick={()=>void createDemo()}><History/> Tạo tình huống demo</button><button onClick={()=>void load()}><RefreshCw/> Làm mới</button><button className="walkin-add" onClick={()=>setOpenForm(true)}><Plus/> Tiếp nhận khách</button></div>
     </div>
     {error&&<p className="error">{error}</p>}
 
