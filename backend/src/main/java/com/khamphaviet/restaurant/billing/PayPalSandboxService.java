@@ -66,6 +66,7 @@ public class PayPalSandboxService {
                 .set("amount", amountNode);
         ObjectNode body = json.createObjectNode().put("intent", "CAPTURE");
         body.putArray("purchase_units").add(unit);
+        preferAccountLogin(body);
 
         JsonNode response = sendJson("/v2/checkout/orders", "POST", body.toString(), true);
         String orderId = response.path("id").asText();
@@ -80,6 +81,7 @@ public class PayPalSandboxService {
         ObjectNode amountNode=json.createObjectNode().put("currency_code",currency).put("value",amount.toPlainString());
         ObjectNode unit=json.createObjectNode().put("reference_id","DEPOSIT-"+deposit.getReservationId()).put("custom_id","DEPOSIT-"+deposit.getReservationId()).put("description","Dat coc Kham Pha Viet").set("amount",amountNode);
         ObjectNode body=json.createObjectNode().put("intent","CAPTURE");body.putArray("purchase_units").add(unit);
+        preferAccountLogin(body);
         JsonNode response=sendJson("/v2/checkout/orders","POST",body.toString(),true);String orderId=response.path("id").asText();
         if(orderId.isBlank())throw new BusinessException("PayPal không trả về mã đơn hàng");
         return new CheckoutDtos.PayPalOrder(orderId,response.path("status").asText(),currency,amount,approvalUrl(response));
@@ -87,11 +89,15 @@ public class PayPalSandboxService {
 
     public ReservationDepositService.DepositResponse captureDepositOrder(String code,String phone,String orderId){
         ensureEnabled();ReservationDeposit deposit=deposits.verified(code,phone);BigDecimal expected=toPayPalAmount(deposit.getAmount());
-        JsonNode response=sendJson("/v2/checkout/orders/"+url(orderId)+"/capture","POST","{}",true);
+        JsonNode response=captureOrReadCompleted(orderId);
         if(!"COMPLETED".equals(response.path("status").asText()))throw new BusinessException("PayPal chưa hoàn tất giao dịch");
-        JsonNode unit=response.path("purchase_units").path(0);if(!("DEPOSIT-"+deposit.getReservationId()).equals(unit.path("custom_id").asText()))throw new BusinessException("Đơn PayPal không thuộc khoản cọc này");
+        String reference="DEPOSIT-"+deposit.getReservationId();
+        JsonNode unit=verifiedPurchaseUnit(response,reference,reference,"Đơn PayPal không thuộc khoản cọc này");
         JsonNode capture=unit.path("payments").path("captures").path(0);String captureId=capture.path("id").asText();
-        if(!currency.equals(capture.path("amount").path("currency_code").asText())||expected.compareTo(decimal(capture.path("amount").path("value").asText()))!=0)throw new BusinessException("Số tiền PayPal không khớp khoản cọc");
+        if(captureId.isBlank()||!"COMPLETED".equals(capture.path("status").asText())
+                ||!currency.equals(capture.path("amount").path("currency_code").asText())
+                ||expected.compareTo(decimal(capture.path("amount").path("value").asText()))!=0)
+            throw new BusinessException("Số tiền hoặc trạng thái PayPal không khớp khoản cọc");
         return deposits.completePayPal(deposit.getReservationId(),orderId,captureId);
     }
 
@@ -101,18 +107,35 @@ public class PayPalSandboxService {
         if (completed.isPresent()) return completed.get();
         var draft = checkout.prepareExternalPayment(sessionId, discount);
         BigDecimal expected = toPayPalAmount(draft.total());
-        JsonNode response = sendJson("/v2/checkout/orders/" + url(orderId) + "/capture", "POST", "{}", true);
+        JsonNode response = captureOrReadCompleted(orderId);
         if (!"COMPLETED".equals(response.path("status").asText())) throw new BusinessException("PayPal chưa hoàn tất giao dịch");
 
-        JsonNode unit = response.path("purchase_units").path(0);
-        if (!sessionId.toString().equals(unit.path("custom_id").asText())) throw new BusinessException("Đơn PayPal không thuộc phiên phục vụ này");
+        JsonNode unit = verifiedPurchaseUnit(response, sessionId.toString(), "SESSION-" + sessionId,
+                "Đơn PayPal không thuộc phiên phục vụ này");
         JsonNode capture = unit.path("payments").path("captures").path(0);
         String captureId = capture.path("id").asText();
         String capturedCurrency = capture.path("amount").path("currency_code").asText();
         BigDecimal capturedAmount = decimal(capture.path("amount").path("value").asText());
-        if (captureId.isBlank() || !currency.equals(capturedCurrency) || expected.compareTo(capturedAmount) != 0)
+        if (captureId.isBlank() || !"COMPLETED".equals(capture.path("status").asText())
+                || !currency.equals(capturedCurrency) || expected.compareTo(capturedAmount) != 0)
             throw new BusinessException("Số tiền PayPal không khớp với hóa đơn");
         return checkout.completePayPalPayment(sessionId, discount, orderId, captureId);
+    }
+
+    private JsonNode captureOrReadCompleted(String orderId) {
+        String orderPath = "/v2/checkout/orders/" + url(orderId);
+        JsonNode current = sendJson(orderPath, "GET", "", true);
+        if ("COMPLETED".equals(current.path("status").asText())) return current;
+        return sendJson(orderPath + "/capture", "POST", "{}", true);
+    }
+
+    JsonNode verifiedPurchaseUnit(JsonNode response, String expectedCustomId, String expectedReferenceId,
+            String errorMessage) {
+        JsonNode unit = response.path("purchase_units").path(0);
+        boolean customMatches = expectedCustomId.equals(unit.path("custom_id").asText());
+        boolean referenceMatches = expectedReferenceId.equals(unit.path("reference_id").asText());
+        if (!customMatches && !referenceMatches) throw new BusinessException(errorMessage);
+        return unit;
     }
 
     private JsonNode sendJson(String path, String method, String body, boolean authenticated) {
@@ -121,7 +144,8 @@ public class PayPalSandboxService {
                     .timeout(Duration.ofSeconds(30)).header("Accept", "application/json");
             if (authenticated) builder.header("Authorization", "Bearer " + accessToken());
             if ("POST".equals(method)) builder.header("Content-Type", "application/json")
-                    .header("PayPal-Request-Id", UUID.randomUUID().toString())
+                    .header("Prefer", "return=representation")
+                    .header("PayPal-Request-Id", requestId(path))
                     .POST(HttpRequest.BodyPublishers.ofString(body));
             HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300)
@@ -151,6 +175,9 @@ public class PayPalSandboxService {
     private String paypalMessage(String body) {
         try {
             JsonNode value = json.readTree(body);
+            String detail = value.path("details").path(0).path("description").asText();
+            String issue = value.path("details").path(0).path("issue").asText();
+            if (!detail.isBlank()) return issue.isBlank() ? detail : issue + ": " + detail;
             String message = value.path("message").asText();
             return message.isBlank() ? "Lỗi không xác định" : message;
         } catch (Exception ignored) {
@@ -158,7 +185,15 @@ public class PayPalSandboxService {
         }
     }
 
-    private String approvalUrl(JsonNode response){for(JsonNode link:response.path("links"))if("approve".equals(link.path("rel").asText()))return link.path("href").asText();return "";}
+    private String requestId(String path) {
+        if (path.endsWith("/capture"))
+            return UUID.nameUUIDFromBytes(path.getBytes(StandardCharsets.UTF_8)).toString();
+        return UUID.randomUUID().toString();
+    }
+
+    private String approvalUrl(JsonNode response){for(JsonNode link:response.path("links"))if(
+            "approve".equals(link.path("rel").asText())||"payer-action".equals(link.path("rel").asText()))
+        return link.path("href").asText();return "";}
 
     private BigDecimal toPayPalAmount(BigDecimal vnd) {
         if (vndPerUsd.signum() <= 0) throw new BusinessException("Tỷ giá PayPal không hợp lệ");
@@ -167,6 +202,17 @@ public class PayPalSandboxService {
 
     private BigDecimal decimal(String value) {
         try { return new BigDecimal(value); } catch (Exception e) { throw new BusinessException("PayPal trả về số tiền không hợp lệ"); }
+    }
+
+    private void preferAccountLogin(ObjectNode body) {
+        ObjectNode experience=json.createObjectNode()
+                .put("brand_name","Khám Phá Việt")
+                .put("landing_page","LOGIN")
+                .put("user_action","PAY_NOW")
+                .put("shipping_preference","NO_SHIPPING")
+                .put("locale","vi-VN");
+        ObjectNode paypal=json.createObjectNode().set("experience_context",experience);
+        body.set("payment_source",json.createObjectNode().set("paypal",paypal));
     }
 
     private boolean enabled() { return !clientId.isBlank() && !clientSecret.isBlank(); }

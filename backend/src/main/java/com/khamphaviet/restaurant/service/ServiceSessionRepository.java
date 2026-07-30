@@ -12,6 +12,7 @@ public interface ServiceSessionRepository extends JpaRepository<ServiceSession, 
     List<ServiceSession> findByReservationIdIn(List<Long> reservationIds);
     List<ServiceSession> findByStatus(ServiceSessionStatus status);
     long countByStatus(ServiceSessionStatus status);
+    long countByAssignedStaffIdAndStatus(Long assignedStaffId, ServiceSessionStatus status);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from ServiceSession s where s.id=:id")
     Optional<ServiceSession> findByIdForUpdate(@Param("id") Long id);

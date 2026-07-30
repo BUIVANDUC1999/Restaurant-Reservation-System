@@ -241,7 +241,8 @@ public class ReservationService {
         var assignedResponses = assigned.stream().map(table -> new ReservationDtos.AssignedTableResponse(table.getId(), table.getCode(),
                 table.getName(), table.getFloor(), table.getArea(), table.getSeats(), table.getStatus(),
                 table.getLayoutX(),table.getLayoutY(),table.getShape())).toList();
-        Long sessionId = sessionRepository.findByReservationId(reservation.getId()).map(ServiceSession::getId).orElse(null);
+        ServiceSession session = sessionRepository.findByReservationId(reservation.getId()).orElse(null);
+        Long sessionId = session == null ? null : session.getId();
         long openOrderCount = sessionId == null ? 0 : diningOrderRepository.countByServiceSessionIdAndStatusIn(sessionId, OPEN_ORDERS);
         boolean paid = sessionId != null && paymentRepository.existsByServiceSessionIdAndStatus(sessionId, PaymentStatus.PAID);
         ReservationDeposit deposit=depositRepository.findByReservationId(reservation.getId()).orElse(null);
@@ -250,7 +251,9 @@ public class ReservationService {
                 reservation.getPartySize(),reservation.effectiveTime(),reservation.effectiveDurationMinutes(),reservation.getHoldExpiresAt(),
                 reservation.getPreferredFloor(), reservation.getNote(), reservation.getStatus(), reservation.getSource(),
                 reservation.getCreatedAt(),reservation.getConfirmedAt(),reservation.getCheckedInAt(),reservation.getCompletedAt(),
-                reservation.isNotifyEmail(),reservation.isNotifySms(),itemResponses, assignedResponses, sessionId, openOrderCount, paid,
+                reservation.isNotifyEmail(),reservation.isNotifySms(),itemResponses, assignedResponses, sessionId,
+                session==null?null:session.getAssignedStaffId(),session==null?null:session.getAssignedStaffName(),
+                session==null?null:session.getAssignedStaffEmail(),session==null?null:session.getAssignedAt(),openOrderCount,paid,
                 deposit==null?java.math.BigDecimal.ZERO:deposit.getAmount(),deposit==null?DepositStatus.PENDING:deposit.getStatus(),
                 deposit==null?null:deposit.getMethod(),deposit==null?null:deposit.getPaidAt());
     }

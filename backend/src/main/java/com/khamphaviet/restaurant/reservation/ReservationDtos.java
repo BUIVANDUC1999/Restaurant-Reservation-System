@@ -43,7 +43,8 @@ public final class ReservationDtos {
             Instant createdAt, Instant confirmedAt, Instant checkedInAt, Instant completedAt,
             boolean notifyEmail, boolean notifySms,
             List<PreOrderItemResponse> preOrderItems, List<AssignedTableResponse> assignedTables,
-            Long serviceSessionId, long openOrderCount, boolean paid,
+            Long serviceSessionId, Long assignedStaffId, String assignedStaffName, String assignedStaffEmail,
+            Instant staffAssignedAt, long openOrderCount, boolean paid,
             BigDecimal depositAmount, DepositStatus depositStatus, DepositMethod depositMethod, Instant depositPaidAt) {}
     public record AvailabilityResponse(boolean available, int remainingSeats, String message) {}
     public record AvailableTableResponse(Long id, String code, String name, String area, Integer seats,

@@ -1,4 +1,4 @@
-import type {AuthUser,AvailableTable,Checkout,DepositQr,DiningOrder,GuestTable,MenuItem,Notification,OperationalTimeout,OperationsReport,PayPalConfig,PayPalOrder,Reservation,RestaurantTable,TableOverview,TableRequest,TimeoutPolicy,UserStats,UserSummary,WalkInMetrics,WalkInVisit} from './types'
+import type {AuthUser,AvailableTable,Checkout,DiningOrder,GuestTable,MenuItem,Notification,OperationalTimeout,OperationsReport,PayPalConfig,PayPalOrder,Reservation,RestaurantTable,StaffShift,TableOverview,TableRequest,TimeoutPolicy,UserStats,UserSummary,WaiterAssignment,WaiterAssignmentEvent,WaiterSummary,WalkInMetrics,WalkInVisit} from './types'
 const BASE=import.meta.env.VITE_API_URL||'/api/v1'
 const token=()=>{try{return JSON.parse(localStorage.getItem('restaurant_auth')||'null')?.accessToken}catch{return null}}
 async function request<T>(path:string,options?:RequestInit):Promise<T>{const auth=token();const response=await fetch(`${BASE}${path}`,{headers:{'Content-Type':'application/json',...(auth?{Authorization:`Bearer ${auth}`}:{}) ,...options?.headers},...options});const text=await response.text();let data:null|Record<string,unknown>=null;try{data=text?JSON.parse(text):null}catch{data=null}if(!response.ok)throw new Error(typeof data?.message==='string'?data.message:(response.status===401||response.status===403?'Phiên đăng nhập không hợp lệ':'Có lỗi xảy ra'));return data as T}
@@ -16,8 +16,6 @@ export const api={
   createReservation:(body:unknown)=>request<Reservation>('/reservations',{method:'POST',body:JSON.stringify(body)}),
   availableTables:(date:string,time:string,durationMinutes:number,partySize:number)=>request<AvailableTable[]>(`/reservations/available-tables?date=${date}&time=${time}&durationMinutes=${durationMinutes}&partySize=${partySize}`),
   lookup:(code:string,phone:string)=>request<Reservation>(`/reservations/lookup?code=${encodeURIComponent(code)}&phone=${encodeURIComponent(phone)}`),
-  depositQr:(code:string,phone:string)=>request<DepositQr>(`/reservations/${encodeURIComponent(code)}/deposit/qr`,{method:'POST',body:JSON.stringify({phone})}),
-  confirmDepositQr:(code:string,phone:string)=>request<unknown>(`/reservations/${encodeURIComponent(code)}/deposit/qr/confirm`,{method:'POST',body:JSON.stringify({phone})}),
   depositPayPalConfig:(code:string)=>request<PayPalConfig>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/config`),
   createDepositPayPal:(code:string,phone:string)=>request<PayPalOrder>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/orders`,{method:'POST',body:JSON.stringify({phone})}),
   captureDepositPayPal:(code:string,phone:string,orderId:string)=>request<unknown>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/orders/capture`,{method:'POST',body:JSON.stringify({phone,orderId})}),
@@ -30,6 +28,16 @@ export const api={
   completeService:(id:number)=>request<Reservation>(`/staff/reservations/${id}/complete`,{method:'POST'}),
   tables:()=>request<RestaurantTable[]>('/staff/tables'),
   tableOverview:()=>request<TableOverview[]>('/staff/tables/overview'),
+  waiters:()=>request<WaiterSummary[]>('/staff/service-sessions/waiters'),
+  waiterAssignmentHistory:(sessionId?:number)=>request<WaiterAssignmentEvent[]>(`/staff/service-sessions/waiter-history${sessionId?`?sessionId=${sessionId}`:''}`),
+  claimServiceSession:(sessionId:number,reason='Nhân viên tự nhận bàn')=>request<WaiterAssignment>(`/staff/service-sessions/${sessionId}/claim`,{method:'POST',body:JSON.stringify({reason})}),
+  assignServiceSession:(sessionId:number,staffId:number,reason?:string)=>request<WaiterAssignment>(`/staff/service-sessions/${sessionId}/waiter`,{method:'PUT',body:JSON.stringify({staffId,reason})}),
+  unassignServiceSession:(sessionId:number,reason:string)=>request<WaiterAssignment>(`/staff/service-sessions/${sessionId}/waiter`,{method:'DELETE',body:JSON.stringify({reason})}),
+  adminShifts:()=>request<StaffShift[]>('/admin/shifts'),
+  createShift:(body:{staffId:number;startsAt:string;endsAt:string})=>request<StaffShift>('/admin/shifts',{method:'POST',body:JSON.stringify(body)}),
+  startShift:(id:number)=>request<StaffShift>(`/admin/shifts/${id}/start`,{method:'POST'}),
+  completeShift:(id:number)=>request<StaffShift>(`/admin/shifts/${id}/complete`,{method:'POST'}),
+  cancelShift:(id:number)=>request<StaffShift>(`/admin/shifts/${id}/cancel`,{method:'POST'}),
   updateTableStatus:(id:number,status:string)=>request<RestaurantTable>(`/staff/tables/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
   createTable:(body:unknown)=>request<RestaurantTable>('/staff/tables',{method:'POST',body:JSON.stringify(body)}),
   sessionOrders:(sessionId:number)=>request<DiningOrder[]>(`/staff/service-sessions/${sessionId}/orders`),
@@ -60,7 +68,6 @@ export const api={
   guestTable:(token:string)=>request<GuestTable>(`/table-guest/${encodeURIComponent(token)}`),
   createTableRequest:(token:string,type:string,note:string)=>request<TableRequest>(`/table-guest/${encodeURIComponent(token)}/requests`,{method:'POST',body:JSON.stringify({type,note})}),
   checkouts:()=>request<Checkout[]>('/staff/checkouts'),
-  payCheckout:(sessionId:number,body:unknown)=>request<Checkout>(`/staff/checkouts/${sessionId}/pay`,{method:'POST',body:JSON.stringify(body)}),
   paypalConfig:()=>request<PayPalConfig>('/staff/checkouts/paypal/config'),
   createPayPalOrder:(sessionId:number,discountAmount:number)=>request<PayPalOrder>(`/staff/checkouts/${sessionId}/paypal/orders`,{method:'POST',body:JSON.stringify({discountAmount})}),
   capturePayPalOrder:(sessionId:number,orderId:string,discountAmount:number)=>request<Checkout>(`/staff/checkouts/${sessionId}/paypal/orders/${encodeURIComponent(orderId)}/capture`,{method:'POST',body:JSON.stringify({discountAmount})})

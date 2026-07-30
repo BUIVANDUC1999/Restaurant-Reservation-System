@@ -1,8 +1,9 @@
-import {AlertTriangle, BellRing, Check, ChefHat, Clock3, Minus, Plus, Search, Send, ShoppingBasket, UtensilsCrossed, X} from 'lucide-react';
+import {AlertTriangle, BellRing, Check, ChefHat, Clock3, Minus, Plus, Search, Send, ShoppingBasket, UserCheck, UtensilsCrossed, X} from 'lucide-react';
 import {useEffect, useMemo, useState} from 'react';
 import {api} from '../api';
 import type {DiningOrder, DiningOrderItemStatus, MenuItem, Reservation} from '../types';
 import {useOperationalEvents} from '../hooks/useOperationalEvents';
+import {useAuth} from '../auth';
 
 const itemLabel: Record<DiningOrderItemStatus, string> = {
   SUBMITTED: 'Chờ bếp nhận',
@@ -14,6 +15,7 @@ const itemLabel: Record<DiningOrderItemStatus, string> = {
 };
 
 export default function ServicePage() {
+  const {user} = useAuth();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Record<number, DiningOrder[]>>({});
@@ -23,6 +25,7 @@ export default function ServicePage() {
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [tableView, setTableView] = useState<'MINE'|'ALL'>(user?.role === 'STAFF' ? 'MINE' : 'ALL');
 
   async function load() {
     try {
@@ -46,10 +49,13 @@ export default function ServicePage() {
   const filtered = useMemo(() => menu.filter(item =>
     item.name.toLowerCase().includes(search.toLowerCase()) ||
     item.category.toLowerCase().includes(search.toLowerCase())), [menu, search]);
-  const readyItems = useMemo(() => reservations.flatMap(reservation =>
+  const visibleReservations = useMemo(() => tableView === 'ALL' || user?.role !== 'STAFF'
+    ? reservations : reservations.filter(row => row.assignedStaffEmail === user.email),
+    [reservations, tableView, user]);
+  const readyItems = useMemo(() => visibleReservations.flatMap(reservation =>
     (orders[reservation.id] || []).flatMap(order => order.items
       .filter(item => item.status === 'READY')
-      .map(item => ({item, order, reservation})))), [orders, reservations]);
+      .map(item => ({item, order, reservation})))), [orders, visibleReservations]);
 
   function change(id: number, delta: number) {
     setQuantities(value => ({...value, [id]: Math.max(0, (value[id] || 0) + delta)}));
@@ -81,13 +87,22 @@ export default function ServicePage() {
     <h1>Món bếp đã xong & gọi thêm món</h1>
     <p className="page-lead">Nhân viên theo dõi riêng từng món. Khi bếp báo xong, món xuất hiện ở đầu trang để mang lên đúng bàn.</p>
     {error && <p className="error">{error}</p>}
+    {user?.role === 'STAFF' && <div className="table-view-tabs">
+      <button className={tableView==='MINE'?'active':''} onClick={()=>setTableView('MINE')}>
+        <UserCheck/> Bàn của tôi <b>{reservations.filter(row=>row.assignedStaffEmail===user.email).length}</b>
+      </button>
+      <button className={tableView==='ALL'?'active':''} onClick={()=>setTableView('ALL')}>
+        <UtensilsCrossed/> Tất cả bàn <b>{reservations.length}</b>
+      </button>
+    </div>}
 
     <section className={`ready-dish-board ${readyItems.length ? 'has-ready' : ''}`}>
       <header><div><BellRing/><span><b>{readyItems.length} món cần mang lên</b><small>Tự cập nhật mỗi 5 giây</small></span></div></header>
       {readyItems.length
         ? <div>{readyItems.map(({item, order, reservation}) =>
           <article key={item.id}>
-            <span><strong>{reservation.assignedTables.map(table => table.code).join(', ')}</strong><small>Phiếu #{order.id}</small></span>
+            <span><strong>{reservation.assignedTables.map(table => table.code).join(', ')}</strong>
+              <small>Phiếu #{order.id} · {reservation.assignedStaffName || 'Chưa phân công nhân viên'}</small></span>
             <b>{item.quantity}× {item.itemName}</b>
             <button disabled={busy} onClick={() => action(() => api.serveOrderItem(item.id))}>
               <Check/> Xác nhận đã mang lên
@@ -97,14 +112,16 @@ export default function ServicePage() {
     </section>
 
     <div className="service-cards">
-      {reservations.map(row => {
+      {visibleReservations.map(row => {
         const rowOrders = orders[row.id] || [];
         const unfinished = rowOrders.some(order => order.items.some(item =>
           ['SUBMITTED', 'PREPARING', 'DELAYED', 'READY'].includes(item.status)));
         return <article key={row.id}>
           <header>
             <span><UtensilsCrossed/><b>{row.assignedTables.map(table => table.code).join(', ')}</b></span>
-            <small>{row.customerName} · {row.partySize} khách</small>
+            <div className="service-card-meta"><small>{row.customerName} · {row.partySize} khách</small>
+              <em className={row.assignedStaffName ? '' : 'unassigned'}><UserCheck/>
+                {row.assignedStaffName || 'Chưa phân công'}</em></div>
           </header>
           <div className="ticket-list item-tracking-list">
             {rowOrders.map(order => <div className="service-order" key={order.id}>
@@ -139,8 +156,9 @@ export default function ServicePage() {
               : <p className="service-paid-note">Đã phục vụ và thanh toán, có thể hoàn tất lượt khách.</p>}
         </article>;
       })}
-      {!reservations.length && <div className="service-empty"><ChefHat/><h2>Chưa có bàn đang phục vụ</h2>
-        <p>Khách cần được xác nhận, xếp bàn và check-in trước khi gọi món.</p></div>}
+      {!visibleReservations.length && <div className="service-empty"><ChefHat/>
+        <h2>{tableView==='MINE'?'Bạn chưa nhận bàn nào':'Chưa có bàn đang phục vụ'}</h2>
+        <p>{tableView==='MINE'?'Vào Sơ đồ bàn để nhận bàn chưa được phân công.':'Khách cần được xác nhận, xếp bàn và check-in trước khi gọi món.'}</p></div>}
     </div>
 
     {selected && <div className="order-modal">

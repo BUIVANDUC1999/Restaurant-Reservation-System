@@ -1,4 +1,4 @@
-import {Activity,Banknote,CalendarCheck,ChefHat,TableProperties,UserCog,Users,UsersRound,UtensilsCrossed} from 'lucide-react'
+import {Activity,Banknote,CalendarCheck,CalendarClock,ChefHat,TableProperties,UserCog,Users,UsersRound,UtensilsCrossed} from 'lucide-react'
 import {useEffect,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {api} from '../api'
@@ -34,6 +34,7 @@ export default function AdminDashboardPage(){
     </div>
     <div className="admin-actions">
       <Link to="/admin/tai-khoan"><UserCog/><div><h2>Quản lý tài khoản</h2><p>Xem danh sách Admin, nhân viên và khách hàng.</p></div><b>→</b></Link>
+      <Link to="/admin/ca-lam-viec"><CalendarClock/><div><h2>Ca làm việc</h2><p>Xếp ca, theo dõi tải bàn và kiểm tra lịch sử bàn giao.</p></div><b>→</b></Link>
       <Link to="/staff"><CalendarCheck/><div><h2>Quản lý đặt bàn</h2><p>Xác nhận yêu cầu, món đặt trước và tiếp nhận khách.</p></div><b>→</b></Link>
       <Link to="/staff/ban"><TableProperties/><div><h2>Quản lý bàn</h2><p>Theo dõi sơ đồ và trạng thái bàn theo thời gian thực.</p></div><b>→</b></Link>
       <Link to="/staff/thuc-don"><UtensilsCrossed/><div><h2>Quản lý món ăn</h2><p>Thêm món, sửa giá, hình ảnh và trạng thái phục vụ.</p></div><b>→</b></Link>

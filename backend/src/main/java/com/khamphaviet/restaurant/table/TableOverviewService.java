@@ -20,7 +20,9 @@ public class TableOverviewService {
     public record TableOverview(Long id,String code,String name,String floor,String area,Integer seats,TableStatus status,boolean active,
                                 Integer layoutX,Integer layoutY,String shape,String publicToken,
                                 TableServiceState serviceState,Long reservationId,String reservationCode,String customerName,
-                                String customerPhone,Integer partySize,Long serviceSessionId,long openOrderCount,long readyOrderCount) {}
+                                String customerPhone,Integer partySize,Long serviceSessionId,
+                                Long assignedStaffId,String assignedStaffName,String assignedStaffEmail,
+                                java.time.Instant staffAssignedAt,long openOrderCount,long readyOrderCount) {}
 
     public List<TableOverview> list() {
         List<RestaurantTable> allTables=tables.findAllByOrderByFloorAscCodeAsc();
@@ -37,16 +39,19 @@ public class TableOverviewService {
                 .filter(r->table.getStatus()==TableStatus.OCCUPIED?r.getStatus()==ReservationStatus.CHECKED_IN:
                         table.getStatus()==TableStatus.RESERVED?List.of(ReservationStatus.PENDING,ReservationStatus.CONFIRMED).contains(r.getStatus()):false)
                 .max(Comparator.comparing(Reservation::getCreatedAt)).orElse(null);
-        Long sessionId=null;long openCount=0;long readyCount=0;
+        ServiceSession session=null;Long sessionId=null;long openCount=0;long readyCount=0;
         if(reservation!=null&&reservation.getStatus()==ReservationStatus.CHECKED_IN){
-            sessionId=sessions.findByReservationId(reservation.getId()).map(ServiceSession::getId).orElse(null);
+            session=sessions.findByReservationId(reservation.getId()).orElse(null);
+            sessionId=session==null?null:session.getId();
             if(sessionId!=null){openCount=orders.countByServiceSessionIdAndStatusIn(sessionId,OPEN);readyCount=orders.countByServiceSessionIdAndStatus(sessionId,DiningOrderStatus.READY);}
         }
         TableServiceState state=state(table,openCount,readyCount);
         return new TableOverview(table.getId(),table.getCode(),table.getName(),table.getFloor(),table.getArea(),table.getSeats(),table.getStatus(),table.isActive(),
                 table.getLayoutX(),table.getLayoutY(),table.getShape(),table.getPublicToken(),state,
                 reservation==null?null:reservation.getId(),reservation==null?null:reservation.getCode(),reservation==null?null:reservation.getCustomerName(),
-                reservation==null?null:reservation.getPhone(),reservation==null?null:reservation.getPartySize(),sessionId,openCount,readyCount);
+                reservation==null?null:reservation.getPhone(),reservation==null?null:reservation.getPartySize(),sessionId,
+                session==null?null:session.getAssignedStaffId(),session==null?null:session.getAssignedStaffName(),
+                session==null?null:session.getAssignedStaffEmail(),session==null?null:session.getAssignedAt(),openCount,readyCount);
     }
 
     private TableServiceState state(RestaurantTable table,long openCount,long readyCount){

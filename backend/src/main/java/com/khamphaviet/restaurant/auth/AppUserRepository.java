@@ -10,4 +10,5 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     long countByRoleIn(List<UserRole> roles);
     long countByActiveTrue();
     List<AppUser> findAllByOrderByCreatedAtDesc();
+    List<AppUser> findByRoleAndActiveTrueOrderByFullNameAsc(UserRole role);
 }

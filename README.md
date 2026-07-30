@@ -39,7 +39,7 @@ Tài khoản Admin demo: `admin@khamphaviet.vn` / `Admin@123`.
 - Có món đặt trước: cọc 10% tổng tiền món.
 - Không đặt món trước: cọc 200.000 ₫ cho mỗi khách.
 - PayPal sử dụng thông tin Sandbox trong `.env`.
-- QR sử dụng `QR_BANK_ID`, `QR_ACCOUNT_NO`, `QR_ACCOUNT_NAME`. Chức năng xác nhận QR hiện là luồng demo; production cần webhook ngân hàng hoặc cổng thanh toán để tự động đối soát.
+- Đặt cọc và thanh toán hóa đơn chỉ sử dụng PayPal Sandbox trong môi trường đồ án; không phát sinh tiền thật.
 
 ## Kiểm tra
 
@@ -78,4 +78,5 @@ Gmail mặc định tắt. Bật bằng `EMAIL_NOTIFICATIONS_ENABLED=true`, sau 
 
 `SMS_SANDBOX=true` là mặc định cho đồ án: SMS được lưu trạng thái `DEMO` và ghi vào log, không phát sinh phí.
 
-Xem thêm [kiến trúc](docs/ARCHITECTURE.md), [kế hoạch kiểm thử](docs/TEST_PLAN.md) và [hướng dẫn triển khai](docs/DEPLOYMENT.md).
+Xem thêm [luồng nghiệp vụ đồ án](docs/LUONG_NGHIEP_VU_DO_AN.md), [kiến trúc](docs/ARCHITECTURE.md),
+[kế hoạch kiểm thử](docs/TEST_PLAN.md) và [hướng dẫn triển khai](docs/DEPLOYMENT.md).

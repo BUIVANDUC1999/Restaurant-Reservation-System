@@ -1,16 +1,12 @@
-import {Banknote, CheckCircle2, CreditCard, ReceiptText, RefreshCw} from 'lucide-react';
+import {CheckCircle2, CreditCard, ReceiptText, RefreshCw} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {api} from '../api';
 import type {Checkout} from '../types';
 import PayPalSandboxButton from '../components/PayPalSandboxButton';
 
-const methods = [['CASH', 'Tiền mặt'], ['BANK_TRANSFER', 'Chuyển khoản'], ['QR', 'Mã QR'], ['CARD', 'Thẻ'], ['PAYPAL', 'PayPal Sandbox']] as const;
-
 export default function CashierPage() {
   const [rows, setRows] = useState<Checkout[]>([]);
   const [discounts, setDiscounts] = useState<Record<number, number>>({});
-  const [paymentMethods, setPaymentMethods] = useState<Record<number, string>>({});
-  const [busy, setBusy] = useState<number>();
   const [error, setError] = useState('');
 
   const load = () => api.checkouts()
@@ -18,21 +14,6 @@ export default function CashierPage() {
     .catch(e => setError(e instanceof Error ? e.message : 'Không tải được hóa đơn'));
 
   useEffect(() => { void load(); }, []);
-
-  async function pay(row: Checkout) {
-    setBusy(row.serviceSessionId);
-    try {
-      await api.payCheckout(row.serviceSessionId, {
-        method: paymentMethods[row.serviceSessionId] || 'CASH',
-        discountAmount: discounts[row.serviceSessionId] || 0,
-      });
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không thanh toán được');
-    } finally {
-      setBusy(undefined);
-    }
-  }
 
   return <section className="page-section container cashier-page">
     <div className="cashier-heading">
@@ -51,14 +32,11 @@ export default function CashierPage() {
         </dl>
         {!row.paid && <div className="payment-form">
           <label>Giảm giá<input type="number" min="0" max={row.subtotal} value={discounts[row.serviceSessionId] || 0} onChange={e => setDiscounts(v => ({...v, [row.serviceSessionId]: Number(e.target.value)}))}/></label>
-          <label>Phương thức<select value={paymentMethods[row.serviceSessionId] || 'CASH'} onChange={e => setPaymentMethods(v => ({...v, [row.serviceSessionId]: e.target.value}))}>{methods.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-          {(paymentMethods[row.serviceSessionId] || 'CASH') !== 'PAYPAL' && <button disabled={busy === row.serviceSessionId || row.openOrderCount > 0} onClick={() => pay(row)}><Banknote/> Xác nhận thanh toán</button>}
-          {(paymentMethods[row.serviceSessionId] || 'CASH') === 'PAYPAL' &&
-            <PayPalSandboxButton sessionId={row.serviceSessionId} discountAmount={discounts[row.serviceSessionId] || 0} disabled={row.openOrderCount > 0} onPaid={async () => { await load(); }}/>
-          }
+          <strong>Phương thức: PayPal Sandbox</strong>
+          <PayPalSandboxButton sessionId={row.serviceSessionId} discountAmount={discounts[row.serviceSessionId] || 0} disabled={row.openOrderCount > 0} onPaid={async () => { await load(); }}/>
           {row.openOrderCount > 0 && <small>Còn {row.openOrderCount} phiếu món chưa phục vụ.</small>}
         </div>}
-        {row.paid && <footer><CreditCard/> {methods.find(([value]) => value === row.paymentMethod)?.[1]} • {row.paidAt && new Date(row.paidAt).toLocaleString('vi-VN')}</footer>}
+        {row.paid && <footer><CreditCard/> {row.paymentMethod === 'PAYPAL' ? 'PayPal Sandbox' : row.paymentMethod} • {row.paidAt && new Date(row.paidAt).toLocaleString('vi-VN')}</footer>}
       </article>)}
       {!rows.length && <div className="empty"><ReceiptText/><h2>Chưa có bàn chờ thanh toán</h2></div>}
     </div>

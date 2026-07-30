@@ -6,8 +6,6 @@ backend/target/
 frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
-mobile/.dart_tool/
-mobile/build/
-mobile/.flutter-plugins*
+/mobile/
 .env
 *.log
