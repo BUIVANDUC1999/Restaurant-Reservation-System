@@ -49,5 +49,5 @@ public final class ReservationDtos {
     public record AvailabilityResponse(boolean available, int remainingSeats, String message) {}
     public record AvailableTableResponse(Long id, String code, String name, String area, Integer seats,
                                          Integer layoutX, Integer layoutY, String shape) {}
-    public record StatusRequest(@NotNull ReservationStatus status) {}
+    public record StatusRequest(@NotNull ReservationStatus status, @Size(max = 400) String reason) {}
 }

@@ -155,7 +155,7 @@ public class WalkInService {
     @Transactional
     public WalkInDtos.VisitResponse seat(Long id,String note,String actor){
         WalkInVisit visit=find(id);require(visit,WalkInStatus.TABLE_OFFERED);
-        reservationService.checkIn(visit.getReservationId());
+        reservationService.checkIn(visit.getReservationId(),actor);
         WalkInStatus from=visit.getStatus();visit.seat();
         log(visit,from,visit.getStatus(),"SEATED",note,actor);
         return response(visit,true);
@@ -184,7 +184,7 @@ public class WalkInService {
         WalkInVisit visit=find(id);
         if(!List.of(WalkInStatus.SEATED,WalkInStatus.DINING,WalkInStatus.PAYMENT_REQUESTED).contains(visit.getStatus()))
             throw new BusinessException("Không thể hoàn tất lượt khách ở trạng thái hiện tại");
-        reservationService.completeService(visit.getReservationId());
+        reservationService.completeService(visit.getReservationId(),actor);
         WalkInStatus from=visit.getStatus();visit.cleaning();
         log(visit,from,visit.getStatus(),"CLEANING",note,actor);return response(visit,true);
     }
@@ -244,7 +244,8 @@ public class WalkInService {
         if(visit.getReservationId()!=null){
             Reservation reservation=reservations.findById(visit.getReservationId()).orElse(null);
             if(reservation!=null&&reservation.getStatus()==ReservationStatus.CONFIRMED)
-                reservationService.updateStatus(reservation.getId(),status);
+                reservationService.updateStatus(reservation.getId(),status,
+                        "Giải phóng bàn do lượt khách trực tiếp không tiếp tục","SYSTEM");
         }
     }
 

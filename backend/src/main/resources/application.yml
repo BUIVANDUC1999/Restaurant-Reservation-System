@@ -51,6 +51,7 @@ app:
     sms-sandbox: ${SMS_SANDBOX:true}
   timeouts:
     reservation-hold-minutes: ${RESERVATION_HOLD_MINUTES:10}
+    reservation-confirmation-minutes: ${RESERVATION_CONFIRMATION_MINUTES:5}
     cleaning-buffer-minutes: ${CLEANING_BUFFER_MINUTES:15}
     upcoming-alert-minutes: ${UPCOMING_ALERT_MINUTES:30}
     late-warning-minutes: ${LATE_WARNING_MINUTES:15}

@@ -112,9 +112,17 @@ Quy tắc an toàn:
 - Capture được xử lý idempotent, gửi lại cùng giao dịch không tạo thanh toán thứ hai.
 - `Client Secret` chỉ lưu trong `.env`, không đưa lên Git.
 
-Sau khi nhận cọc, nhân viên kiểm tra cảnh báo và xác nhận đơn:
+Sau khi nhận cọc:
 
-`PENDING → CONFIRMED`.
+1. Đơn vẫn ở `PENDING` và timeline của khách hiển thị **Đã đặt cọc · chờ nhà hàng xác nhận**.
+2. Nhân viên kiểm tra số tiền, giao dịch PayPal, thời gian, số khách và bàn.
+3. Nhân viên bấm xác nhận trong hộp thoại có nội dung rõ ràng.
+4. Backend chỉ cho phép `PENDING → CONFIRMED` khi tiền cọc là `PAID`.
+5. Hệ thống lưu người xác nhận, thời điểm và lý do vào lịch sử trạng thái.
+6. Hệ thống gửi xác nhận cho khách qua email/SMS theo tùy chọn nhận thông báo.
+7. Nếu đã cọc nhưng chưa xác nhận sau 5 phút, hệ thống tạo timeout `RESERVATION_CONFIRMATION`; không tự hủy đơn đã thanh toán.
+
+Các thao tác từ chối, hủy và đánh dấu `NO_SHOW` đều phải qua hộp xác nhận và bắt buộc nhập lý do. Check-in và hoàn tất lượt khách cũng có hộp xác nhận để tránh bấm nhầm.
 
 Nếu khách không đặt cọc trong thời gian giữ bàn:
 
@@ -310,6 +318,7 @@ Các loại timeout:
 | Loại | Đối tượng | Cách xử lý |
 |---|---|---|
 | `RESERVATION_HOLD` | Đơn chưa đặt cọc | Tự hết hạn và giải phóng bàn |
+| `RESERVATION_CONFIRMATION` | Đơn đã cọc chờ nhân viên xác nhận | Kiểm tra giao dịch và xác nhận trong 5 phút |
 | `CUSTOMER_LATE` | Khách online trễ | Nhân viên liên hệ và quyết định |
 | `KITCHEN_SLA` | Món quá ETA | Bếp cập nhật ETA hoặc báo món xong |
 | `SERVICE_REQUEST_ACK` | QR tại bàn chưa được nhận | Nhân viên nhận yêu cầu |
@@ -333,6 +342,8 @@ Các màn hình vận hành nhận cảnh báo bằng SSE realtime. Polling đ�
 
 - Có lịch đặt mới.
 - Đã nhận tiền cọc.
+- Đơn đã cọc quá 5 phút nhưng chưa được xác nhận.
+- Đã xác nhận đơn và lưu lịch sử người thao tác.
 - Khách sắp đến.
 - Khách trễ.
 - Walk-in mới hoặc quá SLA.
@@ -344,6 +355,7 @@ Các màn hình vận hành nhận cảnh báo bằng SSE realtime. Polling đ�
 
 - Email qua Gmail khi bật cấu hình SMTP.
 - SMS đang ở chế độ Sandbox, chỉ lưu và ghi log, không phát sinh phí.
+- Timeline trên web/mobile phân biệt rõ “đã gửi yêu cầu”, “đã cọc” và “nhà hàng đã xác nhận”.
 
 ## 12. Kịch bản trình bày đồ án
 
@@ -354,8 +366,11 @@ Các màn hình vận hành nhận cảnh báo bằng SSE realtime. Polling đ�
 3. Chọn một vài món để chứng minh cọc bằng 10%.
 4. Gửi đơn và ghi lại mã `KV-*`.
 5. Thanh toán bằng tài khoản Personal Sandbox.
-6. Đăng nhập nhân viên, xác nhận đơn và check-in.
-7. Chỉ ra bàn đổi màu từ đặt trước sang đang phục vụ.
+6. Chỉ ra timeline đang ở bước **Đã đặt cọc · chờ xác nhận**.
+7. Đăng nhập nhân viên, mở hộp xác nhận đơn và xác nhận.
+8. Mở lịch sử để chỉ ra người thao tác, thời điểm và lý do.
+9. Check-in qua hộp xác nhận.
+10. Chỉ ra bàn đổi màu từ đặt trước sang đang phục vụ.
 
 ### Kịch bản B — Bếp và phục vụ
 
@@ -411,6 +426,9 @@ Các màn hình vận hành nhận cảnh báo bằng SSE realtime. Polling đ�
 - **Chống trùng bàn:** transaction mức `SERIALIZABLE`, khóa bi quan theo ID bàn và kiểm tra xung đột lại ở backend.
 - **Chống thanh toán hai lần:** unique constraint, khóa phiên phục vụ và idempotency theo PayPal order.
 - **Không tự hủy khách trễ:** chỉ cảnh báo; nhân viên chịu trách nhiệm quyết định.
+- **Không xác nhận đơn chưa cọc:** backend kiểm tra trạng thái `PAID`, không chỉ ẩn nút ở giao diện.
+- **Không bỏ quên đơn đã cọc:** SLA xác nhận 5 phút, cảnh báo realtime và tự đóng khi nhân viên xử lý.
+- **Chống thao tác nhầm:** hộp xác nhận trước hành động quan trọng; hủy/từ chối/no-show bắt buộc lý do và có audit trail.
 - **Không che giấu món chậm:** trạng thái và ETA nằm trên từng món.
 - **Không bỏ sót trách nhiệm:** timeout có assignee, acknowledge, resolvedBy và audit event.
 - **Không chiếm lịch online bởi walk-in:** bàn đề xuất kiểm tra lịch online tiếp theo và thời gian dọn bàn.

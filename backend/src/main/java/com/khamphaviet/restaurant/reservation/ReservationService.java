@@ -36,6 +36,7 @@ public class ReservationService {
     private final DiningOrderService diningOrderService;
     private final PaymentRepository paymentRepository;
     private final ReservationDepositRepository depositRepository;
+    private final ReservationStatusEventRepository statusEvents;
     private final TableSchedulingService schedulingService;
     private final NotificationService notificationService;
     private final OperationalTimePolicy timePolicy;
@@ -45,7 +46,8 @@ public class ReservationService {
                               RestaurantTableRepository tableRepository, ReservationTableAssignmentRepository assignmentRepository,
                               ServiceSessionRepository sessionRepository, DiningOrderRepository diningOrderRepository,
                               DiningOrderService diningOrderService, PaymentRepository paymentRepository,
-                              ReservationDepositRepository depositRepository, TableSchedulingService schedulingService,
+                             ReservationDepositRepository depositRepository, ReservationStatusEventRepository statusEvents,
+                             TableSchedulingService schedulingService,
                               NotificationService notificationService, OperationalTimePolicy timePolicy) {
         this.repository = repository; this.itemRepository = itemRepository; this.menuRepository = menuRepository;
         this.tableRepository = tableRepository; this.assignmentRepository = assignmentRepository; this.sessionRepository = sessionRepository;
@@ -53,6 +55,7 @@ public class ReservationService {
         this.diningOrderService = diningOrderService;
         this.paymentRepository = paymentRepository;
         this.depositRepository = depositRepository;
+        this.statusEvents = statusEvents;
         this.schedulingService = schedulingService;
         this.notificationService = notificationService;
         this.timePolicy = timePolicy;
@@ -120,18 +123,44 @@ public class ReservationService {
     }
 
     @Transactional
-    public ReservationDtos.ReservationResponse updateStatus(Long id, ReservationStatus status) {
+    public ReservationDtos.ReservationResponse updateStatus(Long id, ReservationStatus status,
+                                                             String reason, String actor) {
         Reservation reservation = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy đơn đặt bàn"));
+        ReservationStatus previous = reservation.getStatus();
+        if (previous == status)
+            return response(reservation, itemRepository.findByReservationIdOrderByIdAsc(id));
         if (reservation.getStatus() != status) {
             boolean allowed = reservation.getStatus() == ReservationStatus.PENDING && List.of(ReservationStatus.CONFIRMED, ReservationStatus.CANCELLED, ReservationStatus.REJECTED).contains(status)
                     || reservation.getStatus() == ReservationStatus.CONFIRMED
                         && List.of(ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW).contains(status);
             if (!allowed) throw new BusinessException("Chuyển trạng thái đặt bàn không hợp lệ");
         }
+        if (status == ReservationStatus.CONFIRMED) {
+            boolean paid = depositRepository.findByReservationId(id)
+                    .map(deposit -> deposit.getStatus() == DepositStatus.PAID).orElse(false);
+            if (!paid) throw new BusinessException("Chỉ được xác nhận sau khi khách đã thanh toán tiền đặt cọc");
+        }
+        boolean requiresReason = List.of(ReservationStatus.CANCELLED, ReservationStatus.REJECTED,
+                ReservationStatus.NO_SHOW).contains(status);
+        String auditReason = reason == null ? "" : reason.trim();
+        if (requiresReason && auditReason.isBlank())
+            throw new BusinessException("Cần nhập lý do cho thao tác này");
+        if (auditReason.isBlank())
+            auditReason = status == ReservationStatus.CONFIRMED ? "Đã kiểm tra tiền cọc và thông tin đặt bàn"
+                    : "Cập nhật trạng thái đặt bàn";
         if (List.of(ReservationStatus.CANCELLED, ReservationStatus.REJECTED, ReservationStatus.NO_SHOW).contains(status))
             releaseAssignedTables(id);
         reservation.changeStatus(status);
+        if (previous != status) {
+            auditStatus(id, previous, status, actor, auditReason);
+            if (status == ReservationStatus.CONFIRMED) notificationService.reservationConfirmed(reservation);
+        }
         return response(reservation, itemRepository.findByReservationIdOrderByIdAsc(id));
+    }
+
+    public List<ReservationStatusEvent> statusHistory(Long id) {
+        if (!repository.existsById(id)) throw new BusinessException("Không tìm thấy đơn đặt bàn");
+        return statusEvents.findByReservationIdOrderByCreatedAtDesc(id);
     }
 
     @Transactional
@@ -166,7 +195,7 @@ public class ReservationService {
     }
 
     @Transactional
-    public ReservationDtos.ReservationResponse checkIn(Long id) {
+    public ReservationDtos.ReservationResponse checkIn(Long id, String actor) {
         Reservation reservation = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy đơn đặt bàn"));
         if (reservation.getStatus() != ReservationStatus.CONFIRMED) throw new BusinessException("Đơn phải được xác nhận trước khi check-in");
         List<ReservationItem> preOrderItems = itemRepository.findByReservationIdOrderByIdAsc(id);
@@ -178,13 +207,15 @@ public class ReservationService {
         tables.forEach(table -> table.changeStatus(TableStatus.OCCUPIED));
         tableRepository.saveAll(tables);
         reservation.changeStatus(ReservationStatus.CHECKED_IN);
+        auditStatus(id, ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN, actor,
+                "Khách đã đến và nhân viên hoàn tất check-in");
         ServiceSession session = sessionRepository.findByReservationId(id).orElseGet(() -> sessionRepository.save(new ServiceSession(id)));
         diningOrderService.createFromPreOrder(session.getId(), preOrderItems);
         return response(reservation, preOrderItems);
     }
 
     @Transactional
-    public ReservationDtos.ReservationResponse completeService(Long id) {
+    public ReservationDtos.ReservationResponse completeService(Long id, String actor) {
         Reservation reservation = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy đơn đặt bàn"));
         if (reservation.getStatus() != ReservationStatus.CHECKED_IN) throw new BusinessException("Khách chưa check-in hoặc lượt phục vụ đã kết thúc");
         ServiceSession session = sessionRepository.findByReservationId(id).orElseThrow(() -> new BusinessException("Không tìm thấy phiên phục vụ"));
@@ -199,7 +230,15 @@ public class ReservationService {
         tables.forEach(table -> table.changeStatus(TableStatus.NEEDS_CLEANING));
         tableRepository.saveAll(tables);
         reservation.changeStatus(ReservationStatus.COMPLETED);
+        auditStatus(id, ReservationStatus.CHECKED_IN, ReservationStatus.COMPLETED, actor,
+                "Đã thanh toán và hoàn tất lượt phục vụ");
         return response(reservation, itemRepository.findByReservationIdOrderByIdAsc(id));
+    }
+
+    private void auditStatus(Long reservationId, ReservationStatus from, ReservationStatus to,
+                             String actor, String reason) {
+        String safeActor = actor == null || actor.isBlank() ? "SYSTEM" : actor.trim();
+        statusEvents.save(new ReservationStatusEvent(reservationId, from, to, safeActor, reason));
     }
 
     private void savePreOrderItems(Long reservationId, List<ReservationDtos.PreOrderItemRequest> requests) {

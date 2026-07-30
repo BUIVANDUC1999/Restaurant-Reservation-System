@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 @Setter
 public class OperationalTimePolicy {
     private int reservationHoldMinutes = 10;
+    private int reservationConfirmationMinutes = 5;
     private int cleaningBufferMinutes = 15;
     private int upcomingAlertMinutes = 30;
     private int lateWarningMinutes = 15;
@@ -20,12 +21,13 @@ public class OperationalTimePolicy {
     private int cleaningTargetMinutes = 15;
 
     public Snapshot snapshot() {
-        return new Snapshot(reservationHoldMinutes, cleaningBufferMinutes, upcomingAlertMinutes,
+        return new Snapshot(reservationHoldMinutes, reservationConfirmationMinutes, cleaningBufferMinutes, upcomingAlertMinutes,
                 lateWarningMinutes, lateCriticalMinutes, tableRequestAckMinutes,
                 kitchenCriticalOverdueMinutes, cleaningTargetMinutes);
     }
 
-    public record Snapshot(int reservationHoldMinutes, int cleaningBufferMinutes, int upcomingAlertMinutes,
+    public record Snapshot(int reservationHoldMinutes, int reservationConfirmationMinutes,
+                           int cleaningBufferMinutes, int upcomingAlertMinutes,
                            int lateWarningMinutes, int lateCriticalMinutes, int tableRequestAckMinutes,
                            int kitchenCriticalOverdueMinutes, int cleaningTargetMinutes) {}
 }

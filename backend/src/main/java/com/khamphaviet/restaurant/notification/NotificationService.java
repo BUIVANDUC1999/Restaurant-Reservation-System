@@ -62,6 +62,20 @@ public class NotificationService {
         deliverPending();
     }
 
+    @Transactional
+    public void reservationConfirmed(Reservation r) {
+        String message="Đơn "+r.getCode()+" đã được nhà hàng xác nhận. "+summary(r)
+                +". Vui lòng đến trước giờ hẹn khoảng 10 phút và cung cấp mã đặt bàn khi check-in.";
+        queue(r,NotificationType.RESERVATION_CONFIRMED,NotificationChannel.IN_APP,"NHÂN VIÊN",
+                "Đã xác nhận đơn đặt bàn",message,"staff-confirmed-"+r.getId());
+        if(r.isNotifyEmail()&&r.getEmail()!=null) queue(r,NotificationType.RESERVATION_CONFIRMED,
+                NotificationChannel.EMAIL,r.getEmail(),"Nhà hàng đã xác nhận đơn "+r.getCode(),
+                message,"email-confirmed-"+r.getId());
+        if(r.isNotifySms()) queue(r,NotificationType.RESERVATION_CONFIRMED,NotificationChannel.SMS,r.getPhone(),
+                "Đơn đặt bàn đã được xác nhận",message,"sms-confirmed-"+r.getId());
+        deliverPending();
+    }
+
     @Scheduled(fixedDelayString="${app.timeouts.monitor-delay-ms:60000}")
     @Transactional
     public void scheduleReminders() {

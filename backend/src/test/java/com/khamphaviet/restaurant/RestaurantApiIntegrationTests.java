@@ -2,6 +2,8 @@ package com.khamphaviet.restaurant;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.khamphaviet.restaurant.deposit.DepositMethod;
+import com.khamphaviet.restaurant.deposit.ReservationDepositRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -16,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class RestaurantApiIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper objectMapper;
+    @Autowired ReservationDepositRepository deposits;
 
     @Test
     void publicMenuIsAvailable() throws Exception {
@@ -121,9 +125,66 @@ class RestaurantApiIntegrationTests {
                         .header("Authorization", "Bearer " + login.get("accessToken").asText()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reservationHoldMinutes").value(10))
+                .andExpect(jsonPath("$.reservationConfirmationMinutes").value(5))
                 .andExpect(jsonPath("$.lateWarningMinutes").value(15))
                 .andExpect(jsonPath("$.lateCriticalMinutes").value(20))
                 .andExpect(jsonPath("$.tableRequestAckMinutes").value(3));
+    }
+
+    @Test
+    void reservationConfirmationRequiresPaidDepositAndCreatesAuditHistory() throws Exception {
+        String token = staffToken();
+        var created = mvc.perform(post("/api/v1/reservations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "customerName", "Khach xac nhan coc",
+                                "phone", "0934567890",
+                                "reservationDate", LocalDate.now().plusYears(7).toString(),
+                                "timeSlot", "LUNCH",
+                                "partySize", 2
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.depositStatus").value("PENDING"))
+                .andReturn();
+        long reservationId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+
+        mvc.perform(patch("/api/v1/staff/reservations/" + reservationId + "/status")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CONFIRMED\"}"))
+                .andExpect(status().isBadRequest());
+
+        var deposit = deposits.findByReservationId(reservationId).orElseThrow();
+        deposit.pay(DepositMethod.PAYPAL, "TEST-ORDER", "TEST-CAPTURE");
+        deposits.saveAndFlush(deposit);
+
+        mvc.perform(patch("/api/v1/staff/reservations/" + reservationId + "/status")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CONFIRMED\",\"reason\":\"Da doi chieu giao dich Sandbox\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.confirmedAt").exists());
+
+        mvc.perform(get("/api/v1/staff/reservations/" + reservationId + "/history")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].fromStatus").value("PENDING"))
+                .andExpect(jsonPath("$[0].toStatus").value("CONFIRMED"))
+                .andExpect(jsonPath("$[0].reason").value("Da doi chieu giao dich Sandbox"));
+
+        mvc.perform(patch("/api/v1/staff/reservations/" + reservationId + "/status")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELLED\"}"))
+                .andExpect(status().isBadRequest());
+
+        mvc.perform(patch("/api/v1/staff/reservations/" + reservationId + "/status")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELLED\",\"reason\":\"Khach yeu cau huy\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
     }
 
     @Test

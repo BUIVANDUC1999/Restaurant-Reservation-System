@@ -57,6 +57,9 @@ cd frontend && npm ci && npm run lint && npm run build
 - Bếp cập nhật SLA từng món: mới nhận, đang nấu, chậm, sẵn sàng và đã mang ra.
 - Khi bếp bấm **Báo món xong**, hệ thống gửi thông báo kèm tên món và bàn; trang phục vụ hiển thị danh sách từng món chờ mang lên để nhân viên xác nhận riêng.
 - Bộ lập lịch kiểm tra mỗi phút để cảnh báo lịch mới, khách sắp đến 30 phút và khách trễ 15/20 phút.
+- Đơn đã cọc phải được nhân viên xác nhận trong 5 phút; quá thời gian sẽ tạo cảnh báo và không tự hủy đơn.
+- Xác nhận đơn, check-in, hoàn tất, hủy, từ chối và no-show đều có bước xác nhận trên giao diện; thao tác kết thúc đơn bắt buộc lưu lý do.
+- Khách theo dõi timeline từ lúc gửi yêu cầu, thanh toán cọc, nhà hàng xác nhận, check-in đến hoàn tất.
 - Trung tâm timeout lưu lịch sử đang mở/đã xử lý cho giữ bàn chưa cọc, khách trễ, món quá SLA, QR chưa được nhận và bàn dọn quá lâu. Chỉ lượt giữ chưa cọc tự hết hạn; khách đã xác nhận không bị tự động hủy.
 - Mỗi timeout có người phụ trách, thao tác nhận việc/chuyển việc/xác nhận/hoàn tất và nhật ký truy vết người thực hiện.
 - Các màn hình bàn, phục vụ, bếp và walk-in nhận sự kiện realtime qua SSE; polling vẫn chạy dự phòng khi kết nối bị gián đoạn.

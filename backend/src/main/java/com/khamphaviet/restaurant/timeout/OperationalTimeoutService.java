@@ -96,10 +96,40 @@ public class OperationalTimeoutService {
     public void monitor() {
         Instant now = Instant.now();
         monitorReservationHolds(now);
+        monitorReservationConfirmations(now);
         monitorLateCustomers(now);
         monitorKitchen(now);
         monitorServiceRequests(now);
         monitorCleaning(now);
+    }
+
+    private void monitorReservationConfirmations(Instant now) {
+        for (Reservation reservation : reservations.findByStatusIn(List.of(ReservationStatus.PENDING))) {
+            ReservationDeposit deposit = deposits.findByReservationId(reservation.getId()).orElse(null);
+            if (deposit == null || deposit.getStatus() != DepositStatus.PAID || deposit.getPaidAt() == null) continue;
+            Instant deadline = deposit.getPaidAt().plusSeconds(policy.getReservationConfirmationMinutes() * 60L);
+            if (deadline.isAfter(now)) continue;
+            long overdue = Duration.between(deadline, now).toMinutes();
+            TimeoutSeverity severity = overdue >= policy.getReservationConfirmationMinutes()
+                    ? TimeoutSeverity.CRITICAL : TimeoutSeverity.WARNING;
+            String key = "confirmation-" + reservation.getId() + "-" + deposit.getPaidAt().toEpochMilli();
+            open(key, TimeoutType.RESERVATION_CONFIRMATION, severity, "RESERVATION", reservation.getId(),
+                    reservation.getId(), null, "Đơn đã đặt cọc chờ xác nhận",
+                    "Đơn " + reservation.getCode() + " đã thanh toán đặt cọc nhưng chưa được nhà hàng xác nhận sau "
+                            + (policy.getReservationConfirmationMinutes() + overdue) + " phút.",
+                    deadline);
+            notifications.createStaffAlert(reservation.getId(), NotificationType.TIMEOUT,
+                    "Cần xác nhận đơn đã đặt cọc",
+                    "Đơn " + reservation.getCode() + " đã thanh toán và đang chờ nhân viên xác nhận.",
+                    "timeout-" + key);
+        }
+        for (Reservation reservation : reservations.findByStatusIn(List.of(
+                ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN, ReservationStatus.COMPLETED,
+                ReservationStatus.CANCELLED, ReservationStatus.REJECTED, ReservationStatus.NO_SHOW,
+                ReservationStatus.EXPIRED))) {
+            resolveOpen(TimeoutType.RESERVATION_CONFIRMATION, "RESERVATION", reservation.getId(),
+                    "Đơn đặt bàn đã được nhân viên xử lý");
+        }
     }
 
     private void monitorReservationHolds(Instant now) {
