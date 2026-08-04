@@ -165,8 +165,8 @@ export default function TablesPage() {
       <span><i className="dot urgent"/>Gọi nhân viên</span>
     </div>
     <div className="restaurant-map">
-      <div className="map-zone window-zone">KHU CỬA SỔ</div><div className="map-zone hall-zone">SẢNH CHÍNH</div>
-      <div className="map-zone family-zone">KHU GIA ĐÌNH / RIÊNG TƯ</div>
+      <div className="map-zone perimeter-zone">6 BÀN KHU VỰC XUNG QUANH</div>
+      <div className="map-zone center-zone">2 BÀN TRUNG TÂM</div>
       {visibleTables.map(table => {
         const call = visibleRequests.some(r => r.tableId === table.id);
         return <article key={table.id} className={`map-table ${table.serviceState.toLowerCase()} ${call ? 'urgent' : ''} ${table.shape.toLowerCase()}`}

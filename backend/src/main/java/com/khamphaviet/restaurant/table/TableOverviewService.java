@@ -25,7 +25,7 @@ public class TableOverviewService {
                                 java.time.Instant staffAssignedAt,long openOrderCount,long readyOrderCount) {}
 
     public List<TableOverview> list() {
-        List<RestaurantTable> allTables=tables.findAllByOrderByFloorAscCodeAsc();
+        List<RestaurantTable> allTables=tables.findAllByActiveTrueOrderByFloorAscCodeAsc();
         List<ReservationTableAssignment> allAssignments=assignments.findByTableIdIn(allTables.stream().map(RestaurantTable::getId).toList());
         Map<Long,Reservation> reservationMap=new HashMap<>();
         reservations.findAllById(allAssignments.stream().map(ReservationTableAssignment::getReservationId).distinct().toList()).forEach(r->reservationMap.put(r.getId(),r));

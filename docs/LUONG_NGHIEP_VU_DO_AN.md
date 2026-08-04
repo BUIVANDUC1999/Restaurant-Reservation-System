@@ -19,6 +19,8 @@ Các vai trò:
 - `KITCHEN`: nhận từng món, cập nhật ETA, báo chậm và báo món đã xong.
 - `ADMIN`: quản lý tài khoản, thực đơn, báo cáo và toàn bộ nghiệp vụ nhân viên.
 
+Không gian demo được gói gọn trong một tầng với tổng 8 bàn: `B07`, `B08` là hai bàn trung tâm; `B01` đến `B06` bố trí bao quanh. Đây là cùng một sơ đồ cho khách chọn bàn, nhân viên phục vụ và màn hình điều phối.
+
 ## 2. Luồng tổng thể
 
 ```mermaid

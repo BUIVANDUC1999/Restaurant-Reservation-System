@@ -121,6 +121,12 @@ class RestaurantApiIntegrationTests {
         mvc.perform(get("/api/v1/staff/reservations")
                         .header("Authorization", "Bearer " + login.get("accessToken").asText()))
                 .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/staff/tables/overview")
+                        .header("Authorization", "Bearer " + login.get("accessToken").asText()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(8))
+                .andExpect(jsonPath("$[?(@.code == 'B07')].area").value("Trung tâm"))
+                .andExpect(jsonPath("$[?(@.code == 'B08')].area").value("Trung tâm"));
         mvc.perform(get("/api/v1/staff/timeouts/policy")
                         .header("Authorization", "Bearer " + login.get("accessToken").asText()))
                 .andExpect(status().isOk())

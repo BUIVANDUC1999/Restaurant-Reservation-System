@@ -52,7 +52,7 @@ cd frontend && npm ci && npm run lint && npm run build
 
 - Khách chọn giờ đến chính xác và thời lượng dùng bàn (mặc định 120 phút).
 - Bàn được giữ 10 phút khi chờ đặt cọc; mỗi lượt cộng 15 phút dọn bàn để chống trùng lịch.
-- Sơ đồ một tầng hiển thị vị trí và màu theo trạng thái vận hành.
+- Sơ đồ một tầng có tổng 8 bàn: 2 bàn trung tâm và 6 bàn bao quanh, hiển thị màu theo trạng thái vận hành.
 - Mỗi bàn có QR riêng. QR chỉ nhận yêu cầu khi có phiên phục vụ và có giới hạn chống spam.
 - Bếp cập nhật SLA từng món: mới nhận, đang nấu, chậm, sẵn sàng và đã mang ra.
 - Khi bếp bấm **Báo món xong**, hệ thống gửi thông báo kèm tên món và bàn; trang phục vụ hiển thị danh sách từng món chờ mang lên để nhân viên xác nhận riêng.

@@ -9,6 +9,7 @@ import jakarta.persistence.LockModeType;
 
 public interface RestaurantTableRepository extends JpaRepository<RestaurantTable, Long> {
     List<RestaurantTable> findAllByOrderByFloorAscCodeAsc();
+    List<RestaurantTable> findAllByActiveTrueOrderByFloorAscCodeAsc();
     boolean existsByCodeIgnoreCase(String code);
     Optional<RestaurantTable> findByPublicToken(String publicToken);
     List<RestaurantTable> findByStatus(TableStatus status);

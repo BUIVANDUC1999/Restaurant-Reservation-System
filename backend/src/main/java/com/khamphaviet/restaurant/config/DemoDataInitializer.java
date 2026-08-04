@@ -40,12 +40,15 @@ public class DemoDataInitializer implements ApplicationRunner {
             });
         }
         if (tables.count() == 0) {
-            for (int i = 1; i <= 22; i++) {
-                int column = (i - 1) % 6, row = (i - 1) / 6;
-                String area = i <= 6 ? "Cửa sổ" : i <= 14 ? "Sảnh chính" : i <= 18 ? "Gia đình" : "Riêng tư";
-                int seats = i % 5 == 0 ? 8 : i % 3 == 0 ? 6 : 4;
-                tables.save(new RestaurantTable("B" + String.format("%02d", i), "Bàn " + i, "Tầng trệt",
-                        area, seats, 8 + column * 15, 12 + row * 23, i % 4 == 0 ? "RECTANGLE" : "ROUND"));
+            String[] areas = {"Cửa sổ", "Cửa sổ", "Sảnh ngoài", "Sảnh ngoài", "Sảnh ngoài", "Sảnh ngoài", "Trung tâm", "Trung tâm"};
+            int[] seats = {4, 6, 4, 4, 6, 4, 6, 6};
+            int[] x = {18, 50, 82, 18, 50, 82, 40, 60};
+            int[] y = {15, 10, 15, 75, 82, 75, 46, 46};
+            for (int i = 1; i <= 8; i++) {
+                String name = i <= 6 ? "Bàn " + i : "Bàn trung tâm " + (i - 6);
+                String shape = i == 2 || i == 5 || i >= 7 ? "RECTANGLE" : "ROUND";
+                tables.save(new RestaurantTable("B" + String.format("%02d", i), name, "Tầng trệt",
+                        areas[i - 1], seats[i - 1], x[i - 1], y[i - 1], shape));
             }
         }
     }
