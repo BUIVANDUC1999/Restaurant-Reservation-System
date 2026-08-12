@@ -8,7 +8,9 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.UUID;
 
 @Component
 @Profile("demo")
@@ -47,8 +49,10 @@ public class DemoDataInitializer implements ApplicationRunner {
             for (int i = 1; i <= 8; i++) {
                 String name = i <= 6 ? "Bàn " + i : "Bàn trung tâm " + (i - 6);
                 String shape = i == 2 || i == 5 || i >= 7 ? "RECTANGLE" : "ROUND";
+                String publicToken = UUID.nameUUIDFromBytes(
+                        ("kham-pha-viet-demo-table-" + i).getBytes(StandardCharsets.UTF_8)).toString();
                 tables.save(new RestaurantTable("B" + String.format("%02d", i), name, "Tầng trệt",
-                        areas[i - 1], seats[i - 1], x[i - 1], y[i - 1], shape));
+                        areas[i - 1], seats[i - 1], x[i - 1], y[i - 1], shape, publicToken));
             }
         }
     }

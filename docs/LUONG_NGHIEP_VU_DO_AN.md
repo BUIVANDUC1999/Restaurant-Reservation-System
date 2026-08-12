@@ -10,7 +10,7 @@ Hệ thống gồm ba thành phần chạy độc lập:
 |---|---|---|
 | Backend Spring Boot | `http://localhost:8080` | REST API, nghiệp vụ, bảo mật và dữ liệu |
 | Web React | `http://localhost:5173` | Khách hàng, Admin, nhân viên, bếp và thu ngân |
-| Mobile Flutter | `http://localhost:5174` | Khách hàng xem món, đặt bàn và tra cứu |
+| Mobile Flutter | `http://localhost:5174` | Khách đặt bàn; nhân viên và bếp xử lý nghiệp vụ theo quyền |
 
 Các vai trò:
 
@@ -261,7 +261,11 @@ Quy tắc:
 - Khi báo chậm, bếp phải nhập lý do và thời gian dự kiến mới.
 - Khi bếp bấm `READY`, thông báo realtime ghi rõ tên món và bàn.
 - Nhân viên chỉ bấm `SERVED` sau khi thực sự mang món lên.
-- Món quá ETA tạo timeout bếp.
+- Trước ETA 3 phút, hệ thống tự cảnh báo bếp kiểm tra tiến độ.
+- Món vừa quá ETA tự tạo timeout `KITCHEN_SLA`; không cần bếp bấm báo chậm trước.
+- Sau 5 phút, cảnh báo ghi rõ bàn và nhân viên phụ trách để chủ động báo khách.
+- Sau 10 phút, timeout chuyển `CRITICAL` để quản lý điều phối.
+- Khi bếp cập nhật ETA mới hoặc báo món xong, timeout đang mở tự đóng. Lịch sử cảnh báo vẫn được giữ để kiểm tra.
 
 ## 7. QR tại bàn
 
@@ -382,6 +386,7 @@ Các màn hình vận hành nhận cảnh báo bằng SSE realtime. Polling đ�
 4. Màn hình phục vụ nhận thông báo realtime.
 5. Nhân viên xác nhận đã mang riêng món thứ nhất.
 6. Cập nhật món thứ hai hoàn tất và phục vụ.
+7. Với một món gần/quá ETA, chỉ ra bộ lọc **Cần chú ý**, số phút chậm và ba mức chuyển tiếp 3/5/10 phút.
 
 ### Kịch bản C — QR tại bàn
 
@@ -431,7 +436,7 @@ Các màn hình vận hành nhận cảnh báo bằng SSE realtime. Polling đ�
 - **Không xác nhận đơn chưa cọc:** backend kiểm tra trạng thái `PAID`, không chỉ ẩn nút ở giao diện.
 - **Không bỏ quên đơn đã cọc:** SLA xác nhận 5 phút, cảnh báo realtime và tự đóng khi nhân viên xử lý.
 - **Chống thao tác nhầm:** hộp xác nhận trước hành động quan trọng; hủy/từ chối/no-show bắt buộc lý do và có audit trail.
-- **Không che giấu món chậm:** trạng thái và ETA nằm trên từng món.
+- **Không che giấu món chậm:** hệ thống tự so ETA mỗi phút, cảnh báo 3/5/10 phút; trạng thái, bộ đếm và ETA nằm trên từng món ở cả web/mobile.
 - **Không bỏ sót trách nhiệm:** timeout có assignee, acknowledge, resolvedBy và audit event.
 - **Không chiếm lịch online bởi walk-in:** bàn đề xuất kiểm tra lịch online tiếp theo và thời gian dọn bàn.
 - **Mất kết nối realtime:** polling định kỳ tiếp tục đồng bộ.

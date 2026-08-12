@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.*;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class OperationalTimeoutService {
@@ -24,7 +26,9 @@ public class OperationalTimeoutService {
     private final ReservationRepository reservations;
     private final ReservationDepositRepository deposits;
     private final ReservationTableAssignmentRepository assignments;
+    private final DiningOrderRepository orders;
     private final DiningOrderItemRepository orderItems;
+    private final ServiceSessionRepository sessions;
     private final TableServiceRequestRepository serviceRequests;
     private final RestaurantTableRepository tables;
     private final NotificationService notifications;
@@ -33,11 +37,13 @@ public class OperationalTimeoutService {
                                      OperationalTimeoutEventRepository timeoutEvents, OperationalTimePolicy policy,
                                      ReservationRepository reservations, ReservationDepositRepository deposits,
                                      ReservationTableAssignmentRepository assignments,
-                                     DiningOrderItemRepository orderItems, TableServiceRequestRepository serviceRequests,
+                                     DiningOrderRepository orders, DiningOrderItemRepository orderItems,
+                                     ServiceSessionRepository sessions, TableServiceRequestRepository serviceRequests,
                                      RestaurantTableRepository tables, NotificationService notifications) {
         this.timeouts = timeouts; this.timeoutEvents = timeoutEvents; this.policy = policy;
         this.reservations = reservations; this.deposits = deposits;
-        this.assignments = assignments; this.orderItems = orderItems; this.serviceRequests = serviceRequests;
+        this.assignments = assignments; this.orders = orders; this.orderItems = orderItems;
+        this.sessions = sessions; this.serviceRequests = serviceRequests;
         this.tables = tables; this.notifications = notifications;
     }
 
@@ -114,13 +120,11 @@ public class OperationalTimeoutService {
                     ? TimeoutSeverity.CRITICAL : TimeoutSeverity.WARNING;
             String key = "confirmation-" + reservation.getId() + "-" + deposit.getPaidAt().toEpochMilli();
             open(key, TimeoutType.RESERVATION_CONFIRMATION, severity, "RESERVATION", reservation.getId(),
-                    reservation.getId(), null, "Đơn đã đặt cọc chờ xác nhận",
-                    "Đơn " + reservation.getCode() + " đã thanh toán đặt cọc nhưng chưa được nhà hàng xác nhận sau "
-                            + (policy.getReservationConfirmationMinutes() + overdue) + " phút.",
+                    reservation.getId(), null, "Chờ xác nhận cọc",
+                    reservation.getCode() + " · chậm " + Math.max(1, overdue) + "p",
                     deadline);
             notifications.createStaffAlert(reservation.getId(), NotificationType.TIMEOUT,
-                    "Cần xác nhận đơn đã đặt cọc",
-                    "Đơn " + reservation.getCode() + " đã thanh toán và đang chờ nhân viên xác nhận.",
+                    "Cọc chờ xác nhận", reservation.getCode() + " · xác nhận đơn",
                     "timeout-" + key);
         }
         for (Reservation reservation : reservations.findByStatusIn(List.of(
@@ -141,13 +145,12 @@ public class OperationalTimeoutService {
             String key = "hold-" + reservation.getId() + "-" + reservation.getHoldExpiresAt().toEpochMilli();
             OperationalTimeout timeout = open(key, TimeoutType.RESERVATION_HOLD, TimeoutSeverity.CRITICAL,
                     "RESERVATION", reservation.getId(), reservation.getId(), null,
-                    "Giữ bàn đã hết hạn", "Đơn " + reservation.getCode() + " chưa đặt cọc trong "
-                            + policy.getReservationHoldMinutes() + " phút.", reservation.getHoldExpiresAt());
+                    "Hết hạn cọc", reservation.getCode() + " · chưa thanh toán", reservation.getHoldExpiresAt());
             reservation.changeStatus(ReservationStatus.EXPIRED);
             assignments.deleteByReservationId(reservation.getId());
             timeout.resolve("Hệ thống tự giải phóng lượt giữ bàn chưa đặt cọc");
-            notifications.createStaffAlert(reservation.getId(), NotificationType.TIMEOUT, "Đã giải phóng bàn giữ quá hạn",
-                    "Đơn " + reservation.getCode() + " chưa đặt cọc và đã tự động hết hạn.", "timeout-" + key);
+            notifications.createStaffAlert(reservation.getId(), NotificationType.TIMEOUT, "Đã nhả bàn",
+                    reservation.getCode() + " · hết hạn cọc", "timeout-" + key);
         }
     }
 
@@ -162,9 +165,8 @@ public class OperationalTimeoutService {
                     ? TimeoutSeverity.CRITICAL : TimeoutSeverity.WARNING;
             String key = "late-" + reservation.getId() + "-" + arrival.toEpochMilli();
             open(key, TimeoutType.CUSTOMER_LATE, severity, "RESERVATION", reservation.getId(),
-                    reservation.getId(), null, "Khách trễ hẹn",
-                    "Đơn " + reservation.getCode() + " đã trễ " + lateMinutes
-                            + " phút. Không tự hủy vì khách đã xác nhận; nhân viên quyết định giữ bàn hoặc no-show.",
+                    reservation.getId(), null, "Khách trễ",
+                    reservation.getCode() + " · trễ " + lateMinutes + "p · giữ bàn/no-show",
                     arrival.plusSeconds(policy.getLateWarningMinutes() * 60L));
         }
         for (Reservation reservation : reservations.findByStatusIn(List.of(
@@ -177,23 +179,87 @@ public class OperationalTimeoutService {
     private void monitorKitchen(Instant now) {
         for (DiningOrderItem item : orderItems.findByStatusIn(List.of(
                 DiningOrderItemStatus.SUBMITTED, DiningOrderItemStatus.PREPARING, DiningOrderItemStatus.DELAYED))) {
+            KitchenContext context = kitchenContext(item);
+            String etaKey = item.getId() + "-" + item.getEstimatedReadyAt().toEpochMilli();
             if (item.getEstimatedReadyAt().isAfter(now)) {
                 resolveOpen(TimeoutType.KITCHEN_SLA, "DINING_ORDER_ITEM", item.getId(), "Bếp đã cập nhật ETA mới");
+                long secondsUntil = Duration.between(now, item.getEstimatedReadyAt()).getSeconds();
+                if (secondsUntil <= policy.getKitchenPrewarningMinutes() * 60L) {
+                    long minutesUntil = Math.max(1, (secondsUntil + 59) / 60);
+                    notifications.createStaffAlert(context.reservationId(), NotificationType.KITCHEN_DELAY,
+                            "Sắp trễ · " + context.tableLabel(),
+                            itemLabel(item) + " · còn " + minutesUntil + "p",
+                            "kitchen-prewarning-" + etaKey);
+                }
                 continue;
             }
-            long overdue = Duration.between(item.getEstimatedReadyAt(), now).toMinutes();
+            long overdue = Math.max(1, Duration.between(item.getEstimatedReadyAt(), now).toMinutes());
             TimeoutSeverity severity = overdue >= policy.getKitchenCriticalOverdueMinutes()
                     ? TimeoutSeverity.CRITICAL : TimeoutSeverity.WARNING;
-            String key = "kitchen-" + item.getId() + "-" + item.getEstimatedReadyAt().toEpochMilli();
-            open(key, TimeoutType.KITCHEN_SLA, severity, "DINING_ORDER_ITEM", item.getId(), null, null,
-                    "Món quá thời gian dự kiến",
-                    item.getItemNameSnapshot() + " đã quá SLA " + overdue + " phút. Bếp cần cập nhật trì hoãn hoặc hoàn tất món.",
+            String key = "kitchen-" + etaKey;
+            OperationalTimeout timeout = open(key, TimeoutType.KITCHEN_SLA, severity,
+                    "DINING_ORDER_ITEM", item.getId(), context.reservationId(), context.tableId(),
+                    "Món chậm · " + context.tableLabel(),
+                    itemLabel(item) + " · chậm " + overdue + "p · " + context.staffLabel(),
                     item.getEstimatedReadyAt());
+            assignKitchenTimeout(timeout, context.staffName());
+
+            String stage;
+            String title;
+            String action;
+            if (overdue >= policy.getKitchenCriticalOverdueMinutes()) {
+                stage = "critical";
+                title = "Món chậm · " + context.tableLabel();
+                action = "Điều phối ngay";
+            } else if (overdue >= policy.getKitchenWaiterEscalationMinutes()) {
+                stage = "waiter";
+                title = "Món chậm · " + context.tableLabel();
+                action = context.staffName() == null || context.staffName().isBlank()
+                        ? "Phân công báo khách"
+                        : context.staffName() + " báo khách";
+            } else {
+                stage = "warning";
+                title = "Món chậm · " + context.tableLabel();
+                action = "Cập nhật ETA";
+            }
+            notifications.createStaffAlert(context.reservationId(), NotificationType.KITCHEN_DELAY,
+                    title, itemLabel(item) + " · " + overdue + "p · " + action,
+                    "kitchen-overdue-" + etaKey + "-" + stage);
         }
         for (DiningOrderItem item : orderItems.findByStatusIn(List.of(DiningOrderItemStatus.READY, DiningOrderItemStatus.SERVED))) {
             resolveOpen(TimeoutType.KITCHEN_SLA, "DINING_ORDER_ITEM", item.getId(), "Bếp đã cập nhật trạng thái món");
         }
     }
+
+    private KitchenContext kitchenContext(DiningOrderItem item) {
+        DiningOrder order = orders.findById(item.getOrderId()).orElse(null);
+        ServiceSession session = order == null ? null : sessions.findById(order.getServiceSessionId()).orElse(null);
+        Long reservationId = session == null ? null : session.getReservationId();
+        List<Long> tableIds = reservationId == null ? List.of() : assignments.findByReservationId(reservationId).stream()
+                .map(ReservationTableAssignment::getTableId).toList();
+        String tableLabel = tableIds.isEmpty() ? "chưa gán bàn" : tables.findAllById(tableIds).stream()
+                .map(RestaurantTable::getCode).sorted().collect(Collectors.joining(", "));
+        if (tableLabel.isBlank()) tableLabel = "chưa gán bàn";
+        String staffName = session == null ? null : session.getAssignedStaffName();
+        String staffLabel = staffName == null || staffName.isBlank() ? "chưa phân công" : staffName;
+        return new KitchenContext(reservationId, tableIds.isEmpty() ? null : tableIds.get(0),
+                tableLabel, staffName, staffLabel);
+    }
+
+    private String itemLabel(DiningOrderItem item) {
+        return item.getQuantity() + "× " + item.getItemNameSnapshot();
+    }
+
+    private void assignKitchenTimeout(OperationalTimeout timeout, String staffName) {
+        if (staffName == null || staffName.isBlank() || Objects.equals(timeout.getAssignedTo(), staffName)) return;
+        String previous = timeout.getAssignedTo();
+        timeout.assign(staffName);
+        event(timeout, previous == null ? "ASSIGNED" : "TRANSFERRED", "SYSTEM", previous, staffName,
+                "Tự gán theo nhân viên đang phụ trách bàn");
+    }
+
+    private record KitchenContext(Long reservationId, Long tableId, String tableLabel,
+                                  String staffName, String staffLabel) {}
 
     private void monitorServiceRequests(Instant now) {
         for (TableServiceRequest request : serviceRequests.findByStatusIn(List.of(TableRequestStatus.NEW))) {
@@ -204,9 +270,8 @@ public class OperationalTimeoutService {
                     ? TimeoutSeverity.CRITICAL : TimeoutSeverity.WARNING;
             open("request-" + request.getId(), TimeoutType.SERVICE_REQUEST_ACK, severity,
                     "TABLE_SERVICE_REQUEST", request.getId(), null, request.getTableId(),
-                    "Yêu cầu tại bàn chưa được nhận",
-                    "Yêu cầu " + request.getType() + " chưa có nhân viên nhận sau "
-                            + (policy.getTableRequestAckMinutes() + overdue) + " phút.", deadline);
+                    "QR chưa nhận",
+                    request.getType() + " · chậm " + Math.max(1, overdue) + "p", deadline);
         }
         for (TableServiceRequest request : serviceRequests.findByStatusIn(List.of(
                 TableRequestStatus.ACKNOWLEDGED, TableRequestStatus.DONE, TableRequestStatus.CANCELLED))) {
@@ -224,8 +289,7 @@ public class OperationalTimeoutService {
                     ? TimeoutSeverity.CRITICAL : TimeoutSeverity.WARNING;
             open("cleaning-" + table.getId() + "-" + table.getStatusChangedAt().toEpochMilli(),
                     TimeoutType.TABLE_CLEANING, severity, "RESTAURANT_TABLE", table.getId(), null, table.getId(),
-                    "Bàn chờ dọn quá lâu", table.getCode() + " đã quá mục tiêu dọn bàn "
-                            + overdue + " phút.", deadline);
+                    "Dọn bàn chậm", table.getCode() + " · chậm " + Math.max(1, overdue) + "p", deadline);
         }
         for (RestaurantTable table : tables.findByStatus(TableStatus.AVAILABLE)) {
             resolveOpen(TimeoutType.TABLE_CLEANING, "RESTAURANT_TABLE", table.getId(), "Bàn đã sẵn sàng");

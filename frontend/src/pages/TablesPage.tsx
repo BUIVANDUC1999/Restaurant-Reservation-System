@@ -1,7 +1,7 @@
-import {Armchair, ArrowRightLeft, BellRing, Check, ChevronRight, Clock3, QrCode, UserCheck, Users, X} from 'lucide-react';
+import {AlertTriangle, Armchair, ArrowRightLeft, BellRing, Check, ChefHat, ChevronRight, Clock3, Phone, QrCode, UserCheck, Users, UtensilsCrossed, X} from 'lucide-react';
 import {useEffect, useMemo, useState} from 'react';
 import {api} from '../api';
-import type {Notification, OperationalTimeout, TableOverview, TableRequest, TimeoutPolicy, WaiterAssignmentEvent, WaiterSummary} from '../types';
+import type {DiningOrder, DiningOrderItem, Notification, OperationalTimeout, TableOverview, TableRequest, TimeoutPolicy, WaiterAssignmentEvent, WaiterSummary} from '../types';
 import {useOperationalEvents} from '../hooks/useOperationalEvents';
 import {useAuth} from '../auth';
 
@@ -13,6 +13,26 @@ const serviceLabels: Record<TableOverview['serviceState'], string> = {
 const requestLabels = {
   CALL_WAITER: 'Gọi nhân viên', WATER: 'Xin thêm nước',
   UTENSILS: 'Xin dụng cụ', PAYMENT: 'Yêu cầu thanh toán'
+};
+const itemLabels:Record<DiningOrderItem['status'],string>={
+  SUBMITTED:'Chờ bếp nhận',PREPARING:'Đang chế biến',DELAYED:'Bếp báo chậm',
+  READY:'Đã xong · chờ mang',SERVED:'Đã phục vụ',CANCELLED:'Đã hủy'
+};
+const activeItemStatuses:DiningOrderItem['status'][]=['SUBMITTED','PREPARING','DELAYED'];
+const timeoutLabels:Record<OperationalTimeout['type'],string>={
+  RESERVATION_HOLD:'Hết hạn cọc',RESERVATION_CONFIRMATION:'Chờ xác nhận',CUSTOMER_LATE:'Khách trễ',
+  KITCHEN_SLA:'Món chậm',SERVICE_REQUEST_ACK:'QR chưa nhận',TABLE_CLEANING:'Dọn bàn chậm'
+};
+const firstSentence=(message:string)=>message.split(/[.!?]/)[0].replace(/\s+phút\b/g,'p').trim();
+const timeoutTarget=(item:OperationalTimeout)=>{
+  const text=`${item.title} ${item.details}`;
+  return text.match(/KV-[A-Z0-9]+/)?.[0]||text.match(/B\d{2}/)?.[0]||'';
+};
+const overdueMinutes=(deadline:string)=>Math.max(1,Math.floor((Date.now()-new Date(deadline).getTime())/60000));
+const guestBaseStorageKey = 'restaurant_guest_base_url';
+const initialGuestBaseUrl = () => {
+  const configured = import.meta.env.VITE_GUEST_BASE_URL?.trim();
+  return (localStorage.getItem(guestBaseStorageKey) || configured || location.origin).replace(/\/$/, '');
 };
 
 export default function TablesPage() {
@@ -26,6 +46,10 @@ export default function TablesPage() {
   const [assignmentHistory, setAssignmentHistory] = useState<WaiterAssignmentEvent[]>([]);
   const [tableView, setTableView] = useState<'MINE'|'ALL'>(user?.role === 'STAFF' ? 'MINE' : 'ALL');
   const [qr, setQr] = useState<TableOverview>();
+  const [selectedId, setSelectedId] = useState<number>();
+  const [detailOrders, setDetailOrders] = useState<DiningOrder[]>([]);
+  const [detailError, setDetailError] = useState('');
+  const [guestBaseUrl, setGuestBaseUrl] = useState(initialGuestBaseUrl);
   const [rosterOpen, setRosterOpen] = useState(true);
   const [assignmentBusy, setAssignmentBusy] = useState<number>();
   const [error, setError] = useState('');
@@ -59,6 +83,28 @@ export default function TablesPage() {
   const visibleTableIds = useMemo(() => new Set(visibleTables.map(table => table.id)), [visibleTables]);
   const visibleRequests = useMemo(() => openRequests.filter(request => visibleTableIds.has(request.tableId)),
     [openRequests, visibleTableIds]);
+  const selected = useMemo(()=>tables.find(table=>table.id===selectedId),[tables,selectedId]);
+  const selectedSessionId = selected?.serviceSessionId;
+  useEffect(()=>{
+    let cancelled=false;
+    if(!selectedSessionId)return;
+    const refresh=()=>api.sessionOrders(selectedSessionId).then(data=>{
+      if(!cancelled){setDetailOrders(data);setDetailError('');}
+    }).catch(e=>{if(!cancelled)setDetailError(e instanceof Error?e.message:'Không tải được phiếu món của bàn');});
+    void refresh();const timer=setInterval(()=>void refresh(),10000);
+    return()=>{cancelled=true;clearInterval(timer);};
+  },[selectedSessionId]);
+  const selectedItems=detailOrders.flatMap(order=>order.items);
+  const selectedRequests=selected?openRequests.filter(request=>request.tableId===selected.id):[];
+  const selectedDelayedItems=selectedItems.filter(item=>item.status==='DELAYED'||
+    activeItemStatuses.includes(item.status)&&new Date(item.estimatedReadyAt).getTime()<=Date.now());
+  const guestUrl = qr ? `${guestBaseUrl}/ban/${qr.publicToken}` : '';
+  const changeGuestBaseUrl = (value:string) => {
+    const normalized = value.trim().replace(/\/$/, '');
+    setGuestBaseUrl(normalized);
+    if (normalized) localStorage.setItem(guestBaseStorageKey, normalized);
+    else localStorage.removeItem(guestBaseStorageKey);
+  };
   const serviceGroups = useMemo(() => {
     const groups = new Map<number, {
       sessionId:number;tableCodes:string[];staffId?:number;staffName?:string;staffEmail?:string
@@ -118,13 +164,13 @@ export default function TablesPage() {
     <div className="operations-alert-strip">
       {alerts.filter(a => !a.readAt).slice(0, 5).map(a =>
         <button key={a.id} onClick={async () => { await api.readNotification(a.id); await load(); }}>
-          <BellRing/><span><b>{a.title}</b><small>{a.message}</small></span><Check/>
+          <BellRing/><span><b>{a.title}</b><small>{firstSentence(a.message)}</small></span><Check/>
         </button>)}
     </div>
 
     <div className="timeout-board">
       <div className="timeout-board-title">
-        <div><h2><Clock3/> Trung tâm quản lý timeout</h2><p>{openTimeouts.length} việc đang quá hạn · kiểm tra mỗi phút</p></div>
+        <div><h2><Clock3/> Việc quá hạn</h2><p>{openTimeouts.length} việc cần xử lý</p></div>
         {policy && <small>Giữ cọc {policy.reservationHoldMinutes}p · QR {policy.tableRequestAckMinutes}p ·
           trễ {policy.lateWarningMinutes}/{policy.lateCriticalMinutes}p · dọn bàn {policy.cleaningTargetMinutes}p</small>}
       </div>
@@ -132,17 +178,14 @@ export default function TablesPage() {
         ? <p className="timeout-empty"><Check/> Không có công việc quá hạn</p>
         : <div className="timeout-grid">{openTimeouts.map(item =>
           <article key={item.id} className={item.severity.toLowerCase()}>
-            <span>{item.severity === 'CRITICAL' ? 'Khẩn cấp' : 'Cảnh báo'} · hạn lúc {
-              new Date(item.deadlineAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})
-            }</span>
-            <b>{item.title}</b><p>{item.details}</p>
-            <small>{item.assignedTo ? `Phụ trách: ${item.assignedTo}` : 'Chưa có người phụ trách'}
-              {item.acknowledgedAt ? ' · đã xác nhận' : ''}</small>
+            <span>{item.severity === 'CRITICAL' ? 'Khẩn' : 'Chậm'} · {overdueMinutes(item.deadlineAt)}p</span>
+            <b>{timeoutLabels[item.type]}{timeoutTarget(item)?` · ${timeoutTarget(item)}`:''}</b>
+            <small>{item.assignedTo||'Chưa phân công'}{item.acknowledgedAt?' · Đã nhận':''}</small>
             {!item.acknowledgedAt && <button onClick={() => acknowledgeTimeout(item.id)}>
-              <Users/> {item.assignedTo ? 'Xác nhận nhận việc' : `Nhận việc (${user?.fullName || 'tôi'})`}
+              <Users/> {item.assignedTo ? 'Xác nhận' : 'Nhận việc'}
             </button>}
-            <button onClick={() => transferTimeout(item.id)}>Chuyển người phụ trách</button>
-            <button onClick={() => resolveTimeout(item.id)}><Check/> Đánh dấu đã xử lý</button>
+            <button onClick={() => transferTimeout(item.id)}>Chuyển việc</button>
+            <button onClick={() => resolveTimeout(item.id)}><Check/> Đã xử lý</button>
           </article>)}</div>}
     </div>
 
@@ -170,13 +213,15 @@ export default function TablesPage() {
       {visibleTables.map(table => {
         const call = visibleRequests.some(r => r.tableId === table.id);
         return <article key={table.id} className={`map-table ${table.serviceState.toLowerCase()} ${call ? 'urgent' : ''} ${table.shape.toLowerCase()}`}
-          style={{left: `${table.layoutX}%`, top: `${table.layoutY}%`}}>
+          style={{left: `${table.layoutX}%`, top: `${table.layoutY}%`}} role="button" tabIndex={0}
+          title={`Xem chi tiết ${table.name}`} onClick={()=>{setDetailOrders([]);setDetailError('');setSelectedId(table.id);}}
+          onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();setDetailOrders([]);setDetailError('');setSelectedId(table.id);}}}>
           <b>{table.code}</b><small><Users/> {table.seats}</small>
           <span>{call ? 'Đang gọi NV' : serviceLabels[table.serviceState]}</span>
           {table.serviceSessionId && <em className={table.assignedStaffName ? '' : 'unassigned'}>
             <UserCheck/> {table.assignedStaffName || 'Chưa phân công'}
           </em>}
-          <button title="Mã QR bàn" onClick={() => setQr(table)}><QrCode/></button>
+          <button title="Mã QR bàn" onClick={event => {event.stopPropagation();setQr(table);}}><QrCode/></button>
         </article>;
       })}
     </div>
@@ -231,11 +276,52 @@ export default function TablesPage() {
       </div>
     </aside>}
 
+    {selected&&<div className="admin-table-detail-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setSelectedId(undefined);}}>
+      <aside className="admin-table-detail table-operations-detail">
+        <header className={selected.serviceState.toLowerCase()}>
+          <div><span>{selected.code}</span><section><small>{serviceLabels[selected.serviceState]}</small><h2>{selected.name}</h2></section></div>
+          <button onClick={()=>setSelectedId(undefined)} aria-label="Đóng chi tiết bàn"><X/></button>
+        </header>
+        <div className="admin-table-detail-summary">
+          <span><Users/><small>Số khách</small><b>{selected.partySize?`${selected.partySize} người`:'Chưa có khách'}</b></span>
+          <span><UserCheck/><small>Nhân viên</small><b>{selected.assignedStaffName||'Chưa phân công'}</b></span>
+          <span><UtensilsCrossed/><small>Phiếu món mở</small><b>{selected.openOrderCount}</b></span>
+          <span className={selectedDelayedItems.length?'danger':''}><AlertTriangle/><small>Món chậm</small><b>{selectedDelayedItems.length}</b></span>
+        </div>
+        {selected.reservationCode&&<div className="admin-table-customer">
+          <span><b>{selected.customerName}</b><small>Mã {selected.reservationCode} · {selected.partySize} khách</small></span>
+          <span><Phone/> {selected.customerPhone||'Không có số điện thoại'}</span>
+        </div>}
+        {!!selectedRequests.length&&<section className="table-detail-requests"><h3><BellRing/> Yêu cầu đang xử lý</h3>
+          {selectedRequests.map(request=><p key={request.id}><b>{requestLabels[request.type]}</b><span>{request.note||'Không có ghi chú'} · {request.status==='NEW'?'Chưa nhận':'Đã có người nhận'}</span></p>)}
+        </section>}
+        <section className="admin-dish-progress">
+          <div className="admin-detail-title"><h3><ChefHat/> Tiến độ từng món</h3><small>{selectedItems.length} món</small></div>
+          {detailError&&<p className="error">{detailError}</p>}
+          {!selected.serviceSessionId&&<p className="admin-detail-empty">Bàn chưa check-in nên chưa có phiên phục vụ.</p>}
+          {selected.serviceSessionId&&!detailError&&!selectedItems.length&&<p className="admin-detail-empty">Bàn chưa gọi món.</p>}
+          {selectedItems.map(item=>{
+            const delayed=selectedDelayedItems.some(delayedItem=>delayedItem.id===item.id);
+            return <article className={`${item.status.toLowerCase()} ${delayed?'delayed':''}`} key={item.id}>
+              <span>{item.status==='READY'?<Check/>:item.status==='PREPARING'?<ChefHat/>:<Clock3/>}</span>
+              <div><b>{item.quantity}× {item.itemName}</b><small>{itemLabels[item.status]} · {item.preparationMinutes}p</small>
+                {item.delayReason&&<em>Lý do: {item.delayReason}</em>}</div>
+              <strong>{delayed?'Chậm':`ETA ${new Date(item.estimatedReadyAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`}</strong>
+            </article>;
+          })}
+        </section>
+      </aside>
+    </div>}
+
     {qr && <div className="qr-table-modal"><div>
       <button className="close" onClick={() => setQr(undefined)}>×</button><QrCode/><h2>QR phục vụ · {qr.code}</h2>
-      <img src={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(`${location.origin}/ban/${qr.publicToken}`)}`} alt={`QR ${qr.code}`}/>
-      <p>In mã này và đặt trên bàn. QR chỉ nhận yêu cầu khi bàn có phiên phục vụ.</p>
-      <b>{location.origin}/ban/{qr.publicToken}</b><button onClick={() => window.print()}>In mã QR</button>
+      <label className="qr-guest-base">Địa chỉ điện thoại truy cập
+        <input type="url" value={guestBaseUrl} onChange={event=>changeGuestBaseUrl(event.target.value)} placeholder="http://192.168.x.x:5173"/>
+      </label>
+      {guestBaseUrl.includes('localhost')&&<p className="qr-warning">Điện thoại không mở được localhost. Hãy nhập địa chỉ Wi-Fi của máy tính.</p>}
+      {guestUrl&&<img src={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(guestUrl)}`} alt={`QR ${qr.code}`}/>}
+      <p>Điện thoại và máy tính cần dùng cùng Wi-Fi. QR chỉ nhận yêu cầu khi bàn có phiên phục vụ.</p>
+      <b className="qr-url">{guestUrl}</b><button onClick={() => window.print()}>In mã QR</button>
     </div></div>}
   </section>;
 }

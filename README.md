@@ -54,7 +54,8 @@ cd frontend && npm ci && npm run lint && npm run build
 - Bàn được giữ 10 phút khi chờ đặt cọc; mỗi lượt cộng 15 phút dọn bàn để chống trùng lịch.
 - Sơ đồ một tầng có tổng 8 bàn: 2 bàn trung tâm và 6 bàn bao quanh, hiển thị màu theo trạng thái vận hành.
 - Mỗi bàn có QR riêng. QR chỉ nhận yêu cầu khi có phiên phục vụ và có giới hạn chống spam.
-- Bếp cập nhật SLA từng món: mới nhận, đang nấu, chậm, sẵn sàng và đã mang ra.
+- Khi chạy nội bộ, cấu hình `VITE_GUEST_BASE_URL` trong `frontend/.env.local` bằng IPv4 của máy; có thể sửa trực tiếp địa chỉ này trong cửa sổ QR. Không dùng `localhost` trong QR quét bằng điện thoại.
+- Bếp cập nhật SLA từng món: mới nhận, đang nấu, chậm, sẵn sàng và đã mang ra. Hệ thống tự cảnh báo trước ETA 3 phút, chuyển nhân viên bàn sau khi chậm 5 phút và chuyển mức nghiêm trọng sau 10 phút.
 - Khi bếp bấm **Báo món xong**, hệ thống gửi thông báo kèm tên món và bàn; trang phục vụ hiển thị danh sách từng món chờ mang lên để nhân viên xác nhận riêng.
 - Bộ lập lịch kiểm tra mỗi phút để cảnh báo lịch mới, khách sắp đến 30 phút và khách trễ 15/20 phút.
 - Đơn đã cọc phải được nhân viên xác nhận trong 5 phút; quá thời gian sẽ tạo cảnh báo và không tự hủy đơn.

@@ -17,17 +17,21 @@ public class OperationalTimePolicy {
     private int lateWarningMinutes = 15;
     private int lateCriticalMinutes = 20;
     private int tableRequestAckMinutes = 3;
+    private int kitchenPrewarningMinutes = 3;
+    private int kitchenWaiterEscalationMinutes = 5;
     private int kitchenCriticalOverdueMinutes = 10;
     private int cleaningTargetMinutes = 15;
 
     public Snapshot snapshot() {
         return new Snapshot(reservationHoldMinutes, reservationConfirmationMinutes, cleaningBufferMinutes, upcomingAlertMinutes,
                 lateWarningMinutes, lateCriticalMinutes, tableRequestAckMinutes,
+                kitchenPrewarningMinutes, kitchenWaiterEscalationMinutes,
                 kitchenCriticalOverdueMinutes, cleaningTargetMinutes);
     }
 
     public record Snapshot(int reservationHoldMinutes, int reservationConfirmationMinutes,
                            int cleaningBufferMinutes, int upcomingAlertMinutes,
                            int lateWarningMinutes, int lateCriticalMinutes, int tableRequestAckMinutes,
+                           int kitchenPrewarningMinutes, int kitchenWaiterEscalationMinutes,
                            int kitchenCriticalOverdueMinutes, int cleaningTargetMinutes) {}
 }

@@ -27,7 +27,7 @@ public class DiningOrderItem {
     private Instant servedAt;
 
     public DiningOrderItem(Long orderId, Long menuItemId, String itemNameSnapshot, BigDecimal unitPrice, int quantity) {
-        this(orderId,menuItemId,itemNameSnapshot,unitPrice,quantity,20);
+        this(orderId,menuItemId,itemNameSnapshot,unitPrice,quantity,8);
     }
     public DiningOrderItem(Long orderId, Long menuItemId, String itemNameSnapshot, BigDecimal unitPrice, int quantity, int preparationMinutes) {
         this.orderId = orderId; this.menuItemId = menuItemId; this.itemNameSnapshot = itemNameSnapshot;

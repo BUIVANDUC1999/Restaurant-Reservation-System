@@ -20,17 +20,17 @@ public class MenuItem {
     @Column(length = 600) private String imageUrl;
     @Column(nullable = false) private boolean featured;
     @Column(nullable = false) private boolean available;
-    @Column(nullable = false, columnDefinition = "integer default 20") private Integer preparationMinutes;
+    @Column(nullable = false, columnDefinition = "integer default 8") private Integer preparationMinutes;
 
     public MenuItem(String name, String category, BigDecimal price, String description, String imageUrl, boolean featured, boolean available) {
-        update(name, category, price, description, imageUrl, featured, available, 20);
+        update(name, category, price, description, imageUrl, featured, available, 8);
     }
     public MenuItem(String name, String category, BigDecimal price, String description, String imageUrl, boolean featured, boolean available, int preparationMinutes) {
         update(name,category,price,description,imageUrl,featured,available,preparationMinutes);
     }
 
     public void update(String name, String category, BigDecimal price, String description, String imageUrl, boolean featured, boolean available) {
-        update(name, category, price, description, imageUrl, featured, available, preparationMinutes == null ? 20 : preparationMinutes);
+        update(name, category, price, description, imageUrl, featured, available, preparationMinutes == null ? 8 : preparationMinutes);
     }
     public void update(String name, String category, BigDecimal price, String description, String imageUrl, boolean featured, boolean available, int preparationMinutes) {
         this.name = name.trim();

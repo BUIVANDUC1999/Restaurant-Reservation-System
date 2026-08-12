@@ -8,4 +8,5 @@ frontend/dist/
 frontend/*.tsbuildinfo
 /mobile/
 .env
+frontend/.env.local
 *.log

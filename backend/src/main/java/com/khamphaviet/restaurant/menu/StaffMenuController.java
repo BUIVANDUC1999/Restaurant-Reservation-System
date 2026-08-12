@@ -29,7 +29,7 @@ public class StaffMenuController {
             @Size(max = 600) String imageUrl,
             @NotNull Boolean featured,
             @NotNull Boolean available,
-            @Min(5) @Max(240) Integer preparationMinutes) {}
+            @Min(5) @Max(10) Integer preparationMinutes) {}
 
     public record AvailabilityRequest(@NotNull Boolean available) {}
 
@@ -40,7 +40,7 @@ public class StaffMenuController {
     @Transactional
     public MenuItem create(@Valid @RequestBody MenuRequest request) {
         return repository.save(new MenuItem(request.name(), request.category(), request.price(), request.description(),
-                request.imageUrl(), request.featured(), request.available(),request.preparationMinutes()==null?20:request.preparationMinutes()));
+                request.imageUrl(), request.featured(), request.available(),request.preparationMinutes()==null?8:request.preparationMinutes()));
     }
 
     @PutMapping("/{id}")

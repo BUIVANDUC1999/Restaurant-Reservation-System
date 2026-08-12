@@ -57,6 +57,8 @@ app:
     late-warning-minutes: ${LATE_WARNING_MINUTES:15}
     late-critical-minutes: ${LATE_CRITICAL_MINUTES:20}
     table-request-ack-minutes: ${TABLE_REQUEST_ACK_MINUTES:3}
+    kitchen-prewarning-minutes: ${KITCHEN_PREWARNING_MINUTES:3}
+    kitchen-waiter-escalation-minutes: ${KITCHEN_WAITER_ESCALATION_MINUTES:5}
     kitchen-critical-overdue-minutes: ${KITCHEN_CRITICAL_OVERDUE_MINUTES:10}
     cleaning-target-minutes: ${CLEANING_TARGET_MINUTES:15}
     monitor-delay-ms: ${TIMEOUT_MONITOR_DELAY_MS:60000}

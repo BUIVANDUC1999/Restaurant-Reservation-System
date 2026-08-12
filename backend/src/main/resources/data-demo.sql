@@ -31,3 +31,10 @@ INSERT INTO menu_items(name, category, price, description, image_url, featured, 
 ('Gà đen hấp lá chanh', 'Đặc sản', 300000, 'Gà đen bản hấp mềm cùng lá chanh và gia vị vùng cao.', 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
 ('Bánh ngô Sa Pa', 'Khai vị', 60000, 'Bánh ngô vàng thơm, áp chảo nhẹ và dùng nóng.', 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE),
 ('Chè ngô nếp Sa Pa', 'Tráng miệng', 55000, 'Chè ngô nếp dẻo thơm, vị ngọt nhẹ dùng sau bữa ăn.', 'https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=1000&q=80', FALSE, TRUE);
+
+UPDATE menu_items
+SET preparation_minutes = CASE
+    WHEN category IN ('Khai vị', 'Tráng miệng') THEN 5
+    WHEN category IN ('Lẩu', 'Đồ nướng', 'Cá hồi') THEN 10
+    ELSE 8
+END;

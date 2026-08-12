@@ -30,9 +30,13 @@ public class RestaurantTable {
         this(code, name, floor, area, seats, 0, 0, "ROUND");
     }
     public RestaurantTable(String code, String name, String floor, String area, int seats, int layoutX, int layoutY, String shape) {
+        this(code, name, floor, area, seats, layoutX, layoutY, shape, UUID.randomUUID().toString());
+    }
+    public RestaurantTable(String code, String name, String floor, String area, int seats, int layoutX, int layoutY,
+                           String shape, String publicToken) {
         this.code = code; this.name = name; this.floor = floor; this.area = area; this.seats = seats;
         this.status = TableStatus.AVAILABLE; this.active = true;
-        this.layoutX = layoutX; this.layoutY = layoutY; this.shape = shape; this.publicToken = UUID.randomUUID().toString();
+        this.layoutX = layoutX; this.layoutY = layoutY; this.shape = shape; this.publicToken = publicToken;
         this.statusChangedAt = Instant.now();
     }
     public void changeStatus(TableStatus status) {

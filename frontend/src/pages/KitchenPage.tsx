@@ -1,23 +1,67 @@
-import {AlertTriangle, BellRing, CheckCircle2, ChefHat, Clock3, Flame, RefreshCw} from 'lucide-react';
+import {AlertTriangle, BellRing, CheckCircle2, ChefHat, Clock3, Flame, RefreshCw, TimerReset} from 'lucide-react';
 import {useEffect, useMemo, useState} from 'react';
 import {api} from '../api';
-import type {DiningOrder, DiningOrderItem, DiningOrderItemStatus} from '../types';
+import type {DiningOrder, DiningOrderItem, DiningOrderItemStatus, TimeoutPolicy} from '../types';
 import {useOperationalEvents} from '../hooks/useOperationalEvents';
 
 const label: Record<DiningOrderItemStatus, string> = {
   SUBMITTED: 'Chờ nấu',
   PREPARING: 'Đang nấu',
-  DELAYED: 'Nấu chậm',
+  DELAYED: 'Bếp đã báo chậm',
   READY: 'Bếp đã báo xong',
   SERVED: 'Nhân viên đã mang lên',
   CANCELLED: 'Đã hủy'
 };
 
+const defaultPolicy: TimeoutPolicy = {
+  reservationHoldMinutes: 10,
+  reservationConfirmationMinutes: 5,
+  cleaningBufferMinutes: 15,
+  upcomingAlertMinutes: 30,
+  lateWarningMinutes: 15,
+  lateCriticalMinutes: 20,
+  tableRequestAckMinutes: 3,
+  kitchenPrewarningMinutes: 3,
+  kitchenWaiterEscalationMinutes: 5,
+  kitchenCriticalOverdueMinutes: 10,
+  cleaningTargetMinutes: 15
+};
+
+type KitchenFilter = 'ALL' | 'ATTENTION' | 'COOKING' | 'READY';
+type SlaLevel = 'NORMAL' | 'DUE_SOON' | 'OVERDUE' | 'WAITER' | 'CRITICAL' | 'DONE';
+
+const activeStatuses: DiningOrderItemStatus[] = ['SUBMITTED', 'PREPARING', 'DELAYED'];
 const time = (value: string) =>
   new Intl.DateTimeFormat('vi-VN', {hour: '2-digit', minute: '2-digit'}).format(new Date(value));
 
+function sla(item: DiningOrderItem, now: number, policy: TimeoutPolicy) {
+  if (!activeStatuses.includes(item.status)) return {level: 'DONE' as SlaLevel, minutes: 0};
+  const difference = new Date(item.estimatedReadyAt).getTime() - now;
+  if (difference > 0) {
+    const minutes = Math.max(1, Math.ceil(difference / 60000));
+    return {level: minutes <= policy.kitchenPrewarningMinutes ? 'DUE_SOON' as SlaLevel : 'NORMAL' as SlaLevel, minutes};
+  }
+  const minutes = Math.max(1, Math.floor(Math.abs(difference) / 60000));
+  if (minutes >= policy.kitchenCriticalOverdueMinutes) return {level: 'CRITICAL' as SlaLevel, minutes};
+  if (minutes >= policy.kitchenWaiterEscalationMinutes) return {level: 'WAITER' as SlaLevel, minutes};
+  return {level: 'OVERDUE' as SlaLevel, minutes};
+}
+
+function slaMessage(item: DiningOrderItem, now: number, policy: TimeoutPolicy) {
+  const state = sla(item, now, policy);
+  if (state.level === 'DUE_SOON') return `Còn ${state.minutes}p`;
+  if (state.level === 'OVERDUE') return `Chậm ${state.minutes}p`;
+  if (state.level === 'WAITER') return `Chậm ${state.minutes}p · Báo khách`;
+  if (state.level === 'CRITICAL') return `Chậm ${state.minutes}p · Điều phối`;
+  if (item.status === 'DELAYED') return `ETA còn ${state.minutes}p`;
+  return '';
+}
+
 export default function KitchenPage() {
   const [orders, setOrders] = useState<DiningOrder[]>([]);
+  const [policy, setPolicy] = useState<TimeoutPolicy>(defaultPolicy);
+  const [filter, setFilter] = useState<KitchenFilter>('ALL');
+  const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState<number>();
   const [error, setError] = useState('');
 
@@ -29,8 +73,10 @@ export default function KitchenPage() {
 
   useEffect(() => {
     void load();
-    const timer = setInterval(() => void load(), 5000);
-    return () => clearInterval(timer);
+    void api.timeoutPolicy().then(setPolicy).catch(() => undefined);
+    const refreshTimer = setInterval(() => void load(), 5000);
+    const clockTimer = setInterval(() => setNow(Date.now()), 10000);
+    return () => { clearInterval(refreshTimer); clearInterval(clockTimer); };
   }, []);
 
   async function update(item: DiningOrderItem, status: string, delayMinutes?: number, reason?: string) {
@@ -48,14 +94,26 @@ export default function KitchenPage() {
   }
 
   const all = useMemo(() => orders.flatMap(order =>
-    order.items.map(item => ({...item, tableCodes: order.tableCodes}))), [orders]);
+    order.items.map(item => ({...item, orderId: order.id, tableCodes: order.tableCodes}))), [orders]);
+  const needsAttention = (item: DiningOrderItem) => {
+    const level = sla(item, now, policy).level;
+    return item.status === 'DELAYED' || ['DUE_SOON', 'OVERDUE', 'WAITER', 'CRITICAL'].includes(level);
+  };
+  const filteredOrders = orders.filter(order => {
+    if (filter === 'ALL') return true;
+    if (filter === 'ATTENTION') return order.items.some(needsAttention);
+    if (filter === 'COOKING') return order.items.some(item => ['SUBMITTED', 'PREPARING', 'DELAYED'].includes(item.status));
+    return order.items.some(item => item.status === 'READY');
+  });
+  const attention = all.filter(needsAttention).sort((left, right) =>
+    new Date(left.estimatedReadyAt).getTime() - new Date(right.estimatedReadyAt).getTime());
 
   return <section className="kitchen-page page-section container">
     <div className="kitchen-heading">
       <div>
-        <p className="eyebrow dark">THEO DÕI TỪNG MÓN</p>
+        <p className="eyebrow dark">THEO DÕI SLA TỰ ĐỘNG</p>
         <h1>Bảng điều phối bếp</h1>
-        <p>Bếp cập nhật riêng từng món. Bấm “Báo món xong” để nhân viên nhận thông báo và mang lên đúng bàn.</p>
+        <p>Tự báo sắp trễ, chậm và cần điều phối.</p>
       </div>
       <button onClick={() => void load()}><RefreshCw/> Làm mới</button>
     </div>
@@ -64,16 +122,32 @@ export default function KitchenPage() {
     <div className="kitchen-stats kitchen-status-guide">
       <span><BellRing/><b>{all.filter(x => x.status === 'SUBMITTED').length}</b> chờ nấu</span>
       <span><Flame/><b>{all.filter(x => x.status === 'PREPARING').length}</b> đang nấu</span>
-      <span className="delayed"><AlertTriangle/><b>{all.filter(x => x.status === 'DELAYED').length}</b> nấu chậm</span>
-      <span className="ready"><CheckCircle2/><b>{all.filter(x => x.status === 'READY').length}</b> chờ nhân viên mang</span>
+      <span className="due-soon"><TimerReset/><b>{all.filter(x => sla(x, now, policy).level === 'DUE_SOON').length}</b> sắp trễ</span>
+      <span className="delayed"><AlertTriangle/><b>{all.filter(x => ['OVERDUE', 'WAITER', 'CRITICAL'].includes(sla(x, now, policy).level)).length}</b> món chậm</span>
+      <span className="ready"><CheckCircle2/><b>{all.filter(x => x.status === 'READY').length}</b> chờ mang lên</span>
+    </div>
+
+    <div className="kitchen-filters" aria-label="Lọc phiếu bếp">
+      {([
+        ['ALL', 'Tất cả', orders.length],
+        ['ATTENTION', 'Cần chú ý', orders.filter(order => order.items.some(needsAttention)).length],
+        ['COOKING', 'Đang xử lý', orders.filter(order => order.items.some(item => activeStatuses.includes(item.status))).length],
+        ['READY', 'Chờ phục vụ', orders.filter(order => order.items.some(item => item.status === 'READY')).length]
+      ] as const).map(([value, text, count]) =>
+        <button className={filter === value ? 'active' : ''} onClick={() => setFilter(value)} key={value}>{text}<b>{count}</b></button>)}
     </div>
 
     <div className="kitchen-quick-board">
       <section className="kitchen-queue delayed-queue">
-        <h2><AlertTriangle/> Món đang chậm</h2>
-        {all.filter(x => x.status === 'DELAYED').map(item =>
-          <p key={item.id}><b>{item.quantity}× {item.itemName}</b><span>{item.tableCodes.join(', ')}</span><small>{item.delayReason}</small></p>)}
-        {!all.some(x => x.status === 'DELAYED') && <i>Không có món chậm.</i>}
+          <h2><AlertTriangle/> Cần chú ý</h2>
+        {attention.map(item => {
+          const state = sla(item, now, policy);
+          return <p className={`sla-${state.level.toLowerCase()}`} key={item.id}>
+            <b>{item.quantity}× {item.itemName}</b><span>{item.tableCodes.join(', ')}</span>
+            <small>{slaMessage(item, now, policy)}{item.delayReason ? ` · ${item.delayReason}` : ''}</small>
+          </p>;
+        })}
+        {!attention.length && <i>Không có món sắp trễ hoặc đang chậm.</i>}
       </section>
       <section className="kitchen-queue ready-queue">
         <h2><CheckCircle2/> Bếp đã xong, chờ mang lên</h2>
@@ -84,37 +158,42 @@ export default function KitchenPage() {
     </div>
 
     <div className="kitchen-board">
-      {orders.map(order => <article className={order.status.toLowerCase()} key={order.id}>
+      {filteredOrders.map(order => <article className={order.status.toLowerCase()} key={order.id}>
         <header>
           <div><b>PHIẾU #{order.id}</b><strong>{order.tableCodes.join(', ')}</strong></div>
           <span><Clock3/> {time(order.createdAt)}</span>
         </header>
         <p>{order.customerName} · {order.reservationCode}</p>
         <div className="kitchen-item-list">
-          {order.items.map(item => <div className={`kitchen-item ${item.status.toLowerCase()}`} key={item.id}>
-            <span>
-              <b>{item.quantity}× {item.itemName}</b>
-              <small>Dự kiến {time(item.estimatedReadyAt)} · SLA {item.preparationMinutes} phút</small>
-              {item.delayReason && <em><AlertTriangle/> {item.delayReason}</em>}
-            </span>
-            <i>{label[item.status]}</i>
-            <div>
-              {item.status === 'SUBMITTED' &&
-                <button disabled={busy === item.id} onClick={() => update(item, 'PREPARING')}><Flame/> Bắt đầu nấu</button>}
-              {(item.status === 'PREPARING' || item.status === 'DELAYED') && <>
-                <button className="delay" disabled={busy === item.id} onClick={() => delay(item)}><AlertTriangle/> Báo chậm</button>
-                <button className="dish-done" disabled={busy === item.id} onClick={() => update(item, 'READY')}>
-                  <BellRing/> Báo món xong
-                </button>
-              </>}
-              {item.status === 'READY' && <small className="waiting-server">Đã báo nhân viên phục vụ</small>}
-              {item.status === 'SERVED' && <small className="served-confirmation"><CheckCircle2/> Đã mang lên bàn</small>}
-            </div>
-          </div>)}
+          {order.items.map(item => {
+            const state = sla(item, now, policy);
+            const message = slaMessage(item, now, policy);
+            return <div className={`kitchen-item ${item.status.toLowerCase()} sla-${state.level.toLowerCase()}`} key={item.id}>
+              <span>
+                <b>{item.quantity}× {item.itemName}</b>
+                <small>ETA {time(item.estimatedReadyAt)} · {item.preparationMinutes}p</small>
+                {message && <strong className="kitchen-sla"><Clock3/> {message}</strong>}
+                {item.delayReason && <em><AlertTriangle/> {item.delayReason}</em>}
+              </span>
+              <i>{label[item.status]}</i>
+              <div>
+                {item.status === 'SUBMITTED' &&
+                  <button disabled={busy === item.id} onClick={() => update(item, 'PREPARING')}><Flame/> Bắt đầu nấu</button>}
+                {(item.status === 'PREPARING' || item.status === 'DELAYED') && <>
+                  <button className="delay" disabled={busy === item.id} onClick={() => delay(item)}><AlertTriangle/> Báo chậm</button>
+                  <button className="dish-done" disabled={busy === item.id} onClick={() => update(item, 'READY')}>
+                    <BellRing/> Báo món xong
+                  </button>
+                </>}
+                {item.status === 'READY' && <small className="waiting-server">Đã báo nhân viên phục vụ</small>}
+                {item.status === 'SERVED' && <small className="served-confirmation"><CheckCircle2/> Đã mang lên bàn</small>}
+              </div>
+            </div>;
+          })}
         </div>
         {order.note && <blockquote>“{order.note}”</blockquote>}
       </article>)}
-      {!orders.length && <div className="kitchen-empty"><ChefHat/><h2>Bếp đã xử lý hết món</h2></div>}
+      {!filteredOrders.length && <div className="kitchen-empty"><ChefHat/><h2>Không có phiếu phù hợp bộ lọc</h2></div>}
     </div>
   </section>;
 }

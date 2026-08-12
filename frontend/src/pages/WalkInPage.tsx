@@ -3,7 +3,7 @@ import {useEffect, useMemo, useState} from 'react';
 import type {FormEvent} from 'react';
 import {Link} from 'react-router-dom';
 import {api} from '../api';
-import type {WalkInMetrics, WalkInPriority, WalkInStatus, WalkInVisit} from '../types';
+import type {TableOverview, WalkInMetrics, WalkInPriority, WalkInStatus, WalkInVisit} from '../types';
 import {useOperationalEvents} from '../hooks/useOperationalEvents';
 
 const statusLabel:Record<WalkInStatus,string>={
@@ -16,17 +16,26 @@ const priorityLabel:Record<WalkInPriority,string>={
 };
 const terminal:WalkInStatus[]=['COMPLETED','LEFT','NO_RESPONSE','CANCELLED'];
 const clock=(value?:string)=>value?new Date(value).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}):'—';
+const shortSlaLabels:Record<string,string>={
+  'Đang chờ đúng ETA':'Đúng giờ','Sắp đến thời gian đã hẹn':'Sắp đến lượt','Đã trễ thời gian xếp bàn':'Trễ xếp bàn',
+  'Đang chờ khách vào bàn':'Chờ khách','Cần gọi khách lần nữa':'Gọi lại khách','Khách chưa gọi món':'Chưa gọi món',
+  'Khách ngồi quá lâu chưa có phiếu món':'Chưa gọi món','Đang chờ thanh toán':'Chờ thanh toán',
+  'Yêu cầu thanh toán sắp quá hạn':'Sắp trễ thanh toán','Yêu cầu thanh toán chưa được xử lý':'Thanh toán chậm',
+  'Bàn đang được dọn':'Đang dọn','Bàn sắp quá thời gian dọn':'Sắp trễ dọn bàn','Bàn chưa được dọn đúng SLA':'Dọn bàn chậm'
+};
+const shortSla=(message:string)=>shortSlaLabels[message]||message.replace(/\s+phút\b/g,'p');
 
 export default function WalkInPage(){
   const[visits,setVisits]=useState<WalkInVisit[]>([]);
   const[metrics,setMetrics]=useState<WalkInMetrics>();
+  const[tables,setTables]=useState<TableOverview[]>([]);
   const[openForm,setOpenForm]=useState(false);
   const[busy,setBusy]=useState<number|string>();
   const[error,setError]=useState('');
   const[form,setForm]=useState({customerName:'',phone:'',partySize:2,areaPreference:'',priority:'NORMAL' as WalkInPriority,priorityReason:'',quotedWaitMinutes:'',note:''});
 
   async function load(){
-    try{const[v,m]=await Promise.all([api.walkIns(),api.walkInMetrics()]);setVisits(v);setMetrics(m);setError('')}
+    try{const[v,m,t]=await Promise.all([api.walkIns(),api.walkInMetrics(),api.tableOverview()]);setVisits(v);setMetrics(m);setTables(t);setError('')}
     catch(e){setError(e instanceof Error?e.message:'Không tải được hàng chờ')}
   }
   useOperationalEvents(()=>void load());
@@ -36,6 +45,8 @@ export default function WalkInPage(){
   const history=useMemo(()=>visits.filter(v=>terminal.includes(v.status)).slice(0,20),[visits]);
   const critical=active.filter(v=>v.slaLevel==='CRITICAL').length;
   const waiting=active.filter(v=>v.status==='WAITING').length;
+  const servingTables=tables.filter(table=>!!table.serviceSessionId);
+  const servingGuests=servingTables.reduce((total,table)=>total+(table.partySize||0),0);
 
   async function create(event:FormEvent){
     event.preventDefault();setBusy('create');setError('');
@@ -66,7 +77,7 @@ export default function WalkInPage(){
   return <section className="walkin-page page-section container">
     <div className="walkin-heading">
       <div><p className="eyebrow dark">FRONT-OF-HOUSE ORCHESTRATION</p><h1>Điều phối khách tại quán</h1>
-        <p>Hàng chờ, ETA, bảo vệ lịch online và SLA từ lúc khách đến cho tới khi bàn được dọn xong.</p></div>
+        <p>Theo dõi hàng chờ và thời gian phục vụ.</p></div>
       <div><button disabled={busy==='demo'} onClick={()=>void createDemo()}><History/> Tạo tình huống demo</button><button onClick={()=>void load()}><RefreshCw/> Làm mới</button><button className="walkin-add" onClick={()=>setOpenForm(true)}><Plus/> Tiếp nhận khách</button></div>
     </div>
     {error&&<p className="error">{error}</p>}
@@ -74,9 +85,12 @@ export default function WalkInPage(){
     <div className="walkin-stats">
       <span><Users/><b>{waiting}</b><small>Nhóm đang chờ</small></span>
       <span><Armchair/><b>{active.filter(v=>v.status==='TABLE_OFFERED').length}</b><small>Đã mời vào bàn</small></span>
-      <span><UtensilsCrossed/><b>{active.filter(v=>['SEATED','DINING'].includes(v.status)).length}</b><small>Đang phục vụ</small></span>
-      <span className={critical?'critical':''}><AlertTriangle/><b>{critical}</b><small>Việc quá SLA</small></span>
+      <span><UtensilsCrossed/><b>{servingTables.length}</b><small>Bàn đang phục vụ · {servingGuests} khách</small></span>
+      <span className={critical?'critical':''}><AlertTriangle/><b>{critical}</b><small>Việc quá giờ</small></span>
     </div>
+    {!!servingTables.length&&<div className="walkin-serving-tables"><div><Armchair/><span><b>Các bàn đang phục vụ</b><small>Bao gồm khách đặt online và khách đến trực tiếp</small></span></div>
+      <section>{servingTables.map(table=><Link to="/staff/ban" key={table.id}><b>{table.code}</b><span>{table.customerName||'Khách tại bàn'} · {table.partySize||0} khách</span><small>{table.assignedStaffName||'Chưa phân công nhân viên'}</small></Link>)}</section>
+    </div>}
     {metrics&&<div className="walkin-kpis">
       <span><small>Chờ trung bình</small><b>{metrics.averageWaitMinutes} phút</b></span>
       <span><small>P90 thời gian chờ</small><b>{metrics.p90WaitMinutes} phút</b></span>
@@ -86,17 +100,17 @@ export default function WalkInPage(){
     </div>}
 
     {!!critical&&<div className="walkin-escalation"><BellRing/><div><b>Cần xử lý ngay</b>
-      {active.filter(v=>v.slaLevel==='CRITICAL').map(v=><span key={v.id}>{v.code} · {v.customerName}: {v.slaMessage}</span>)}</div></div>}
+      {active.filter(v=>v.slaLevel==='CRITICAL').map(v=><span key={v.id}>{v.code} · {v.customerName} · {shortSla(v.slaMessage)}</span>)}</div></div>}
 
     <div className="walkin-board">
       {active.map(visit=><article key={visit.id} className={`walkin-card ${visit.slaLevel.toLowerCase()} status-${visit.status.toLowerCase()}`}>
         <header><div><span>{visit.code}</span><h2>{visit.customerName}</h2><small><Users/> {visit.partySize} khách {visit.phone&&<>· <Phone/> {visit.phone}</>}</small></div>
           <div className="walkin-badges"><i>{priorityLabel[visit.priority]}</i><strong>{statusLabel[visit.status]}</strong></div></header>
         <div className="walkin-sla">
-          <span><Clock3/><b>{visit.elapsedMinutes} phút</b> từ khi đến</span>
-          <span className={visit.slaLevel.toLowerCase()}><i/>{visit.slaMessage}</span>
-          {visit.status==='WAITING'&&<small>ETA {clock(visit.expectedSeatAt)} · đã báo chờ {visit.quotedWaitMinutes} phút</small>}
-          {visit.status==='TABLE_OFFERED'&&<small>Giữ bàn đến {clock(visit.offerExpiresAt)} · đã gọi {visit.callCount} lần</small>}
+          <span><Clock3/><b>{visit.elapsedMinutes}p</b></span>
+          <span className={visit.slaLevel.toLowerCase()}><i/>{shortSla(visit.slaMessage)}</span>
+          {visit.status==='WAITING'&&<small>ETA {clock(visit.expectedSeatAt)} · chờ {visit.quotedWaitMinutes}p</small>}
+          {visit.status==='TABLE_OFFERED'&&<small>Giữ đến {clock(visit.offerExpiresAt)} · gọi {visit.callCount} lần</small>}
         </div>
         {visit.note&&<p className="walkin-note">{visit.note}</p>}
 

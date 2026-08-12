@@ -54,8 +54,13 @@ public class DiningOrderService {
         List<ReservationItem> confirmed = preOrderItems.stream().filter(item -> item.getStatus() == PreOrderStatus.CONFIRMED).toList();
         if (confirmed.isEmpty() || orders.existsByServiceSessionIdAndSource(sessionId, OrderSource.PREORDER)) return;
         DiningOrder order = orders.save(new DiningOrder(sessionId, "Món khách chọn trước khi đặt bàn", OrderSource.PREORDER));
-        confirmed.forEach(item -> items.save(new DiningOrderItem(order.getId(), item.getMenuItemId(), item.getItemNameSnapshot(),
-                item.getUnitPrice(), item.getQuantity())));
+        confirmed.forEach(item -> {
+            int preparationMinutes = menu.findById(item.getMenuItemId())
+                    .map(dish -> dish.getPreparationMinutes())
+                    .orElse(8);
+            items.save(new DiningOrderItem(order.getId(), item.getMenuItemId(), item.getItemNameSnapshot(),
+                    item.getUnitPrice(), item.getQuantity(), preparationMinutes));
+        });
     }
 
     public List<DiningOrderDtos.OrderResponse> kitchenBoard() {
@@ -91,8 +96,8 @@ public class DiningOrderService {
                     ServiceSession session=activeSession(order.getServiceSessionId());
                     Reservation reservation=reservations.findById(session.getReservationId()).orElseThrow();
                     notifications.createStaffAlert(reservation.getId(),NotificationType.KITCHEN_DELAY,
-                            "Bếp báo chậm món",item.getItemNameSnapshot()+" chậm "+request.delayMinutes()+" phút"
-                                    +(request.reason()==null?"":" – "+request.reason()),"kitchen-delay-"+item.getId()+"-"+item.getDelayedUntil());
+                            "Món chậm",item.getItemNameSnapshot()+" · +"+request.delayMinutes()+"p"
+                                    +(request.reason()==null?"":" · "+request.reason()),"kitchen-delay-"+item.getId()+"-"+item.getDelayedUntil());
                 }
                 case READY->{
                     item.ready();
@@ -100,8 +105,8 @@ public class DiningOrderService {
                     Reservation reservation=reservations.findById(session.getReservationId()).orElseThrow();
                     String tableLabel=tableCodes(reservation.getId()).stream().collect(java.util.stream.Collectors.joining(", "));
                     notifications.createStaffAlert(reservation.getId(),NotificationType.DISH_READY,
-                            "Món đã xong · "+tableLabel,
-                            item.getQuantity()+"× "+item.getItemNameSnapshot()+" đã được bếp báo xong. Nhân viên mang món lên bàn.",
+                            "Món xong · "+tableLabel,
+                            item.getQuantity()+"× "+item.getItemNameSnapshot()+" · mang ra bàn",
                             "dish-ready-"+item.getId());
                 }
                 case SERVED->item.served();
