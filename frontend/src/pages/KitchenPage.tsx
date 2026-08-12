@@ -29,6 +29,12 @@ const defaultPolicy: TimeoutPolicy = {
 
 type KitchenFilter = 'ALL' | 'ATTENTION' | 'COOKING' | 'READY';
 type SlaLevel = 'NORMAL' | 'DUE_SOON' | 'OVERDUE' | 'WAITER' | 'CRITICAL' | 'DONE';
+type KitchenQueueItem = DiningOrderItem & {
+  orderId: number;
+  orderCreatedAt: string;
+  source: DiningOrder['source'];
+  tableCodes: string[];
+};
 
 const activeStatuses: DiningOrderItemStatus[] = ['SUBMITTED', 'PREPARING', 'DELAYED'];
 const time = (value: string) =>
@@ -55,6 +61,38 @@ function slaMessage(item: DiningOrderItem, now: number, policy: TimeoutPolicy) {
   if (state.level === 'CRITICAL') return `Chậm ${state.minutes}p · Điều phối`;
   if (item.status === 'DELAYED') return `ETA còn ${state.minutes}p`;
   return '';
+}
+
+function itemPriority(item: DiningOrderItem, now: number, policy: TimeoutPolicy) {
+  const level = sla(item, now, policy).level;
+  if (level === 'CRITICAL') return 0;
+  if (level === 'WAITER') return 1;
+  if (level === 'OVERDUE') return 2;
+  if (item.status === 'DELAYED') return 3;
+  if (level === 'DUE_SOON') return 4;
+  if (item.status === 'READY') return 5;
+  if (activeStatuses.includes(item.status)) return 6;
+  return 7;
+}
+
+function compareItems(
+  left: DiningOrderItem,
+  right: DiningOrderItem,
+  now: number,
+  policy: TimeoutPolicy
+) {
+  const priority = itemPriority(left, now, policy) - itemPriority(right, now, policy);
+  if (priority !== 0) return priority;
+  const eta = new Date(left.estimatedReadyAt).getTime() - new Date(right.estimatedReadyAt).getTime();
+  return eta !== 0 ? eta : left.id - right.id;
+}
+
+function orderPriority(order: DiningOrder, now: number, policy: TimeoutPolicy) {
+  return Math.min(...order.items.map(item => itemPriority(item, now, policy)), 7);
+}
+
+function waitingMinutes(value: string, now: number) {
+  return Math.max(0, Math.floor((now - new Date(value).getTime()) / 60000));
 }
 
 export default function KitchenPage() {
@@ -93,20 +131,42 @@ export default function KitchenPage() {
     void update(item, 'DELAYED', minutes, reason);
   }
 
-  const all = useMemo(() => orders.flatMap(order =>
-    order.items.map(item => ({...item, orderId: order.id, tableCodes: order.tableCodes}))), [orders]);
+  const all = useMemo<KitchenQueueItem[]>(() => orders.flatMap(order =>
+    order.items.map(item => ({
+      ...item,
+      orderId: order.id,
+      orderCreatedAt: order.createdAt,
+      source: order.source,
+      tableCodes: order.tableCodes
+    }))), [orders]);
   const needsAttention = (item: DiningOrderItem) => {
     const level = sla(item, now, policy).level;
     return item.status === 'DELAYED' || ['DUE_SOON', 'OVERDUE', 'WAITER', 'CRITICAL'].includes(level);
   };
-  const filteredOrders = orders.filter(order => {
+  const sortedOrders = [...orders].sort((left, right) => {
+    const priority = orderPriority(left, now, policy) - orderPriority(right, now, policy);
+    if (priority !== 0) return priority;
+    const created = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+    return created !== 0 ? created : left.id - right.id;
+  });
+  const filteredOrders = sortedOrders.filter(order => {
     if (filter === 'ALL') return true;
     if (filter === 'ATTENTION') return order.items.some(needsAttention);
     if (filter === 'COOKING') return order.items.some(item => ['SUBMITTED', 'PREPARING', 'DELAYED'].includes(item.status));
     return order.items.some(item => item.status === 'READY');
   });
-  const attention = all.filter(needsAttention).sort((left, right) =>
-    new Date(left.estimatedReadyAt).getTime() - new Date(right.estimatedReadyAt).getTime());
+  const attention = all.filter(needsAttention).sort((left, right) => {
+    const priority = itemPriority(left, now, policy) - itemPriority(right, now, policy);
+    if (priority !== 0) return priority;
+    const created = new Date(left.orderCreatedAt).getTime() - new Date(right.orderCreatedAt).getTime();
+    if (created !== 0) return created;
+    const eta = new Date(left.estimatedReadyAt).getTime() - new Date(right.estimatedReadyAt).getTime();
+    return eta !== 0 ? eta : left.id - right.id;
+  });
+  const readyItems = all.filter(item => item.status === 'READY').sort((left, right) => {
+    const created = new Date(left.orderCreatedAt).getTime() - new Date(right.orderCreatedAt).getTime();
+    return created !== 0 ? created : left.id - right.id;
+  });
 
   return <section className="kitchen-page page-section container">
     <div className="kitchen-heading">
@@ -137,38 +197,50 @@ export default function KitchenPage() {
         <button className={filter === value ? 'active' : ''} onClick={() => setFilter(value)} key={value}>{text}<b>{count}</b></button>)}
     </div>
 
+    <div className="kitchen-priority-rule">
+      <span><AlertTriangle/> Chậm nhiều xếp trước</span>
+      <span><Clock3/> Cùng mức: phiếu vào trước xếp trước</span>
+      <span><b>1</b> Số nhỏ xử lý trước</span>
+    </div>
+
     <div className="kitchen-quick-board">
-      <section className="kitchen-queue delayed-queue">
-          <h2><AlertTriangle/> Cần chú ý</h2>
-        {attention.map(item => {
+      <section className="kitchen-queue delayed-queue kitchen-priority-list">
+        <h2><AlertTriangle/> Ưu tiên xử lý <small>{attention.length} món</small></h2>
+        {attention.map((item, index) => {
           const state = sla(item, now, policy);
           return <p className={`sla-${state.level.toLowerCase()}`} key={item.id}>
+            <em>{index + 1}</em>
             <b>{item.quantity}× {item.itemName}</b><span>{item.tableCodes.join(', ')}</span>
-            <small>{slaMessage(item, now, policy)}{item.delayReason ? ` · ${item.delayReason}` : ''}</small>
+            <small>{slaMessage(item, now, policy)} · phiếu {time(item.orderCreatedAt)}{item.delayReason ? ` · ${item.delayReason}` : ''}</small>
           </p>;
         })}
         {!attention.length && <i>Không có món sắp trễ hoặc đang chậm.</i>}
       </section>
-      <section className="kitchen-queue ready-queue">
-        <h2><CheckCircle2/> Bếp đã xong, chờ mang lên</h2>
-        {all.filter(x => x.status === 'READY').map(item =>
-          <p key={item.id}><b>{item.quantity}× {item.itemName}</b><span>{item.tableCodes.join(', ')}</span></p>)}
-        {!all.some(x => x.status === 'READY') && <i>Chưa có món chờ mang lên.</i>}
+      <section className="kitchen-queue ready-queue kitchen-priority-list">
+        <h2><CheckCircle2/> Chờ mang lên <small>{readyItems.length} món</small></h2>
+        {readyItems.map((item, index) =>
+          <p key={item.id}><em>{index + 1}</em><b>{item.quantity}× {item.itemName}</b><span>{item.tableCodes.join(', ')}</span>
+            <small>Phiếu {time(item.orderCreatedAt)} · vào trước phục vụ trước</small>
+          </p>)}
+        {!readyItems.length && <i>Chưa có món chờ mang lên.</i>}
       </section>
     </div>
 
     <div className="kitchen-board">
-      {filteredOrders.map(order => <article className={order.status.toLowerCase()} key={order.id}>
+      {filteredOrders.map((order, orderIndex) => <article className={`${order.status.toLowerCase()} ${order.items.some(needsAttention) ? 'priority-order' : ''}`} key={order.id}>
         <header>
-          <div><b>PHIẾU #{order.id}</b><strong>{order.tableCodes.join(', ')}</strong></div>
-          <span><Clock3/> {time(order.createdAt)}</span>
+          <div><b><i>ƯU TIÊN {orderIndex + 1}</i> PHIẾU #{order.id}</b><strong>{order.tableCodes.join(', ')}</strong></div>
+          <span><Clock3/> {time(order.createdAt)} · {waitingMinutes(order.createdAt, now)}p</span>
         </header>
-        <p>{order.customerName} · {order.reservationCode}</p>
+        <p className="kitchen-order-summary">
+          <span>{order.customerName} · {order.reservationCode}</span>
+          <strong>{order.source === 'PREORDER' ? 'MÓN ĐẶT TRƯỚC' : 'GỌI TẠI BÀN'}</strong>
+        </p>
         <div className="kitchen-item-list">
-          {order.items.map(item => {
+          {[...order.items].sort((left, right) => compareItems(left, right, now, policy)).map((item, itemIndex) => {
             const state = sla(item, now, policy);
             const message = slaMessage(item, now, policy);
-            return <div className={`kitchen-item ${item.status.toLowerCase()} sla-${state.level.toLowerCase()}`} key={item.id}>
+            return <div className={`kitchen-item ${item.status.toLowerCase()} sla-${state.level.toLowerCase()}`} data-priority={itemIndex + 1} key={item.id}>
               <span>
                 <b>{item.quantity}× {item.itemName}</b>
                 <small>ETA {time(item.estimatedReadyAt)} · {item.preparationMinutes}p</small>

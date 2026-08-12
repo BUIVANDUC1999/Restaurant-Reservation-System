@@ -64,7 +64,7 @@ public class DiningOrderService {
     }
 
     public List<DiningOrderDtos.OrderResponse> kitchenBoard() {
-        return orders.findAllByOrderByCreatedAtDesc().stream()
+        return orders.findAllByOrderByCreatedAtAsc().stream()
                 .filter(order->List.of(DiningOrderStatus.SUBMITTED,DiningOrderStatus.PREPARING,DiningOrderStatus.READY).contains(order.getStatus()))
                 .map(order->response(order,sessions.findById(order.getServiceSessionId()).orElseThrow())).toList();
     }
