@@ -2,6 +2,9 @@
 
 Repository độc lập cho hệ thống web đặt bàn và vận hành nhà hàng Khám Phá Việt.
 
+Repository này **chỉ chứa Web React và Backend Spring Boot**. Mã Flutter nằm hoàn toàn trong repository riêng
+[`Restaurant-Reservation-Mobile`](https://github.com/BUIVANDUC1999/Restaurant-Reservation-Mobile); không đặt thư mục `mobile/` bên trong repository này.
+
 ## Thành phần
 
 - `backend/`: Java 21, Spring Boot, PostgreSQL, Flyway, JWT/RBAC và REST API.
@@ -10,6 +13,8 @@ Repository độc lập cho hệ thống web đặt bàn và vận hành nhà h�
 - `docker-compose.yml`: PostgreSQL, backend và frontend.
 
 Ứng dụng Flutter được duy trì trong repository riêng `restaurant-reservation-mobile` và sử dụng REST API của repository này.
+
+Xem [hướng dẫn chạy hai dự án độc lập](docs/RUN_SEPARATE_PROJECTS.md) để tránh mở nhầm thư mục hoặc chạy nhầm cổng.
 
 ## Chạy nhanh bằng Docker
 
