@@ -53,7 +53,7 @@ cd frontend && npm ci && npm run lint && npm run build
 - Khách chọn giờ đến chính xác và thời lượng dùng bàn (mặc định 120 phút).
 - Bàn được giữ 10 phút khi chờ đặt cọc; mỗi lượt cộng 15 phút dọn bàn để chống trùng lịch.
 - Sơ đồ một tầng có tổng 8 bàn: 2 bàn trung tâm và 6 bàn bao quanh, hiển thị màu theo trạng thái vận hành.
-- Mỗi bàn có QR riêng. QR chỉ nhận yêu cầu khi có phiên phục vụ và có giới hạn chống spam.
+- Mỗi bàn có QR riêng. Trước check-in khách có thể gọi nhân viên hỗ trợ nhận bàn; sau check-in có thêm yêu cầu nước, dụng cụ và thanh toán. Tất cả yêu cầu đều có giới hạn chống spam.
 - Khi chạy nội bộ, cấu hình `VITE_GUEST_BASE_URL` trong `frontend/.env.local` bằng IPv4 của máy; có thể sửa trực tiếp địa chỉ này trong cửa sổ QR. Không dùng `localhost` trong QR quét bằng điện thoại.
 - Bếp cập nhật SLA từng món: mới nhận, đang nấu, chậm, sẵn sàng và đã mang ra. Hệ thống tự cảnh báo trước ETA 3 phút, chuyển nhân viên bàn sau khi chậm 5 phút và chuyển mức nghiêm trọng sau 10 phút.
 - Khi bếp bấm **Báo món xong**, hệ thống gửi thông báo kèm tên món và bàn; trang phục vụ hiển thị danh sách từng món chờ mang lên để nhân viên xác nhận riêng.
@@ -78,9 +78,10 @@ cd frontend && npm ci && npm run lint && npm run build
 
 ### Gmail và SMS Sandbox
 
-Gmail mặc định tắt. Bật bằng `EMAIL_NOTIFICATIONS_ENABLED=true`, sau đó cấu hình `MAIL_USERNAME` và `MAIL_PASSWORD` bằng Gmail App Password. Không commit App Password lên Git.
+Gmail mặc định tắt. Bật xác minh 2 bước cho tài khoản gửi, tạo Gmail App Password 16 ký tự, rồi cấu hình `EMAIL_NOTIFICATIONS_ENABLED=true`, `MAIL_USERNAME` và `MAIL_PASSWORD` trong `.env`. Khi dán App Password hãy bỏ dấu cách và không commit mật khẩu này lên Git. Khởi động lại backend sau khi thay đổi; chỉ các email mới được tạo sau đó mới được gửi thật.
 
 `SMS_SANDBOX=true` là mặc định cho đồ án: SMS được lưu trạng thái `DEMO` và ghi vào log, không phát sinh phí.
 
 Xem thêm [luồng nghiệp vụ đồ án](docs/LUONG_NGHIEP_VU_DO_AN.md), [kiến trúc](docs/ARCHITECTURE.md),
-[kế hoạch kiểm thử](docs/TEST_PLAN.md) và [hướng dẫn triển khai](docs/DEPLOYMENT.md).
+[sơ đồ cơ sở dữ liệu](docs/DATABASE_DIAGRAM.md), [kế hoạch kiểm thử](docs/TEST_PLAN.md) và
+[hướng dẫn triển khai](docs/DEPLOYMENT.md).

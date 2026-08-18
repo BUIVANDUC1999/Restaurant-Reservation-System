@@ -1,0 +1,315 @@
+Table app_users {
+  id bigint [pk, increment]
+  full_name varchar(120) [not null]
+  email varchar(160) [not null, unique]
+  phone varchar(20)
+  password_hash varchar(100) [not null]
+  role varchar(30) [not null]
+  active boolean [not null, default: true]
+  created_at timestamptz [not null]
+}
+
+Table staff_shifts {
+  id bigint [pk, increment]
+  version bigint
+  staff_id bigint [not null]
+  staff_name varchar(120) [not null]
+  staff_email varchar(180) [not null]
+  starts_at timestamptz [not null]
+  ends_at timestamptz [not null]
+  status varchar(20) [not null]
+  actual_started_at timestamptz
+  actual_ended_at timestamptz
+  created_by varchar(180) [not null]
+  created_at timestamptz [not null]
+}
+
+Table menu_items {
+  id bigint [pk, increment]
+  name varchar(160) [not null]
+  category varchar(80) [not null]
+  price numeric(12,2) [not null]
+  description varchar(600)
+  image_url varchar(600)
+  featured boolean [not null, default: false]
+  available boolean [not null, default: true]
+  preparation_minutes integer [not null, default: 8]
+}
+
+Table reservations {
+  id bigint [pk, increment]
+  version bigint
+  code varchar(16) [not null, unique]
+  customer_name varchar(120) [not null]
+  phone varchar(20) [not null]
+  email varchar(160)
+  reservation_date date [not null]
+  time_slot varchar(20) [not null]
+  reservation_time time [not null]
+  duration_minutes integer [not null, default: 120]
+  party_size integer [not null]
+  preferred_floor varchar(30)
+  note varchar(1000)
+  status varchar(30) [not null]
+  source varchar(20) [not null, default: 'ONLINE']
+  created_at timestamptz [not null]
+  hold_expires_at timestamptz [not null]
+  confirmed_at timestamptz
+  checked_in_at timestamptz
+  completed_at timestamptz
+  cancelled_at timestamptz
+  notify_email boolean [not null, default: false]
+  notify_sms boolean [not null, default: true]
+}
+
+Table reservation_items {
+  id bigint [pk, increment]
+  reservation_id bigint [not null]
+  menu_item_id bigint [not null]
+  item_name_snapshot varchar(160) [not null]
+  unit_price numeric(12,2) [not null]
+  quantity integer [not null]
+  status varchar(30) [not null, default: 'REQUESTED']
+}
+
+Table reservation_deposits {
+  id bigint [pk, increment]
+  reservation_id bigint [not null, unique]
+  amount numeric(12,2) [not null]
+  status varchar(20) [not null]
+  method varchar(20)
+  paid_at timestamptz
+  provider_order_id varchar(120) [unique]
+  provider_capture_id varchar(120)
+  version bigint [not null, default: 0]
+}
+
+Table restaurant_tables {
+  id bigint [pk, increment]
+  version bigint
+  code varchar(30) [not null, unique]
+  name varchar(100) [not null]
+  floor varchar(30) [not null]
+  area varchar(80) [not null]
+  seats integer [not null]
+  status varchar(30) [not null]
+  active boolean [not null, default: true]
+  layout_x integer [not null]
+  layout_y integer [not null]
+  shape varchar(20) [not null]
+  public_token varchar(64) [not null, unique]
+  status_changed_at timestamptz [not null]
+}
+
+Table reservation_table_assignments {
+  id bigint [pk, increment]
+  reservation_id bigint [not null]
+  table_id bigint [not null]
+  assigned_at timestamptz [not null]
+
+  indexes {
+    (reservation_id, table_id) [unique]
+  }
+}
+
+Table service_sessions {
+  id bigint [pk, increment]
+  reservation_id bigint [not null, unique]
+  status varchar(30) [not null]
+  opened_at timestamptz [not null]
+  closed_at timestamptz
+  assigned_staff_id bigint
+  assigned_staff_name varchar(120)
+  assigned_staff_email varchar(180)
+  assigned_by varchar(180)
+  assigned_at timestamptz
+}
+
+Table dining_orders {
+  id bigint [pk, increment]
+  service_session_id bigint [not null]
+  status varchar(30) [not null]
+  source varchar(30) [not null]
+  note varchar(500)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table dining_order_items {
+  id bigint [pk, increment]
+  order_id bigint [not null]
+  menu_item_id bigint [not null]
+  item_name_snapshot varchar(200) [not null]
+  unit_price numeric(12,2) [not null]
+  quantity integer [not null]
+  status varchar(30) [not null]
+  preparation_minutes integer [not null]
+  estimated_ready_at timestamptz [not null]
+  started_at timestamptz
+  delayed_until timestamptz
+  delay_reason varchar(300)
+  ready_at timestamptz
+  served_at timestamptz
+}
+
+Table payments {
+  id bigint [pk, increment]
+  service_session_id bigint [not null, unique]
+  invoice_code varchar(30) [not null, unique]
+  subtotal numeric(12,2) [not null]
+  discount_amount numeric(12,2) [not null]
+  total_amount numeric(12,2) [not null]
+  method varchar(30) [not null]
+  status varchar(30) [not null]
+  paid_at timestamptz [not null]
+  provider_order_id varchar(120)
+  provider_capture_id varchar(120)
+}
+
+Table table_service_requests {
+  id bigint [pk, increment]
+  table_id bigint [not null]
+  service_session_id bigint
+  type varchar(30) [not null]
+  status varchar(30) [not null]
+  note varchar(300)
+  created_at timestamptz [not null]
+  acknowledged_at timestamptz
+  completed_at timestamptz
+}
+
+Table walk_in_visits {
+  id bigint [pk, increment]
+  version bigint
+  code varchar(24) [not null, unique]
+  customer_name varchar(120) [not null]
+  phone varchar(20)
+  party_size integer [not null]
+  area_preference varchar(100)
+  priority varchar(30) [not null]
+  priority_reason varchar(300)
+  status varchar(30) [not null]
+  arrived_at timestamptz [not null]
+  quoted_wait_minutes integer [not null]
+  expected_seat_at timestamptz [not null]
+  offered_at timestamptz
+  offer_expires_at timestamptz
+  seated_at timestamptz
+  payment_requested_at timestamptz
+  cleaning_started_at timestamptz
+  completed_at timestamptz
+  left_at timestamptz
+  table_id bigint
+  reservation_id bigint
+  call_count integer [not null, default: 0]
+  note varchar(500)
+}
+
+Table walk_in_events {
+  id bigint [pk, increment]
+  walk_in_visit_id bigint [not null]
+  from_status varchar(30)
+  to_status varchar(30) [not null]
+  action varchar(60) [not null]
+  note varchar(500)
+  actor varchar(180) [not null]
+  created_at timestamptz [not null]
+}
+
+Table operational_notifications {
+  id bigint [pk, increment]
+  reservation_id bigint
+  type varchar(40) [not null]
+  channel varchar(20) [not null]
+  status varchar(20) [not null]
+  recipient varchar(180)
+  title varchar(180) [not null]
+  message varchar(1200) [not null]
+  dedupe_key varchar(180) [not null, unique]
+  created_at timestamptz [not null]
+  sent_at timestamptz
+  read_at timestamptz
+  error_message varchar(600)
+}
+
+Table operational_timeouts {
+  id bigint [pk, increment]
+  type varchar(40) [not null]
+  severity varchar(20) [not null]
+  status varchar(20) [not null]
+  entity_type varchar(40) [not null]
+  entity_id bigint [not null]
+  reservation_id bigint
+  table_id bigint
+  title varchar(180) [not null]
+  details varchar(1200) [not null]
+  deadline_at timestamptz [not null]
+  opened_at timestamptz [not null]
+  resolved_at timestamptz
+  resolution_note varchar(400)
+  assigned_to varchar(180)
+  assigned_at timestamptz
+  acknowledged_by varchar(180)
+  acknowledged_at timestamptz
+  resolved_by varchar(180)
+  dedupe_key varchar(220) [not null, unique]
+}
+
+Table operational_timeout_events {
+  id bigint [pk, increment]
+  timeout_id bigint [not null]
+  action varchar(40) [not null]
+  actor varchar(180) [not null]
+  from_assignee varchar(180)
+  to_assignee varchar(180)
+  note varchar(400)
+  created_at timestamptz [not null]
+}
+
+Table waiter_assignment_events {
+  id bigint [pk, increment]
+  service_session_id bigint [not null]
+  reservation_id bigint [not null]
+  action varchar(20) [not null]
+  from_staff_id bigint
+  from_staff_name varchar(120)
+  to_staff_id bigint
+  to_staff_name varchar(120)
+  actor varchar(180) [not null]
+  reason varchar(400) [not null]
+  created_at timestamptz [not null]
+}
+
+Table reservation_status_events {
+  id bigint [pk, increment]
+  reservation_id bigint [not null]
+  from_status varchar(30) [not null]
+  to_status varchar(30) [not null]
+  actor varchar(180) [not null]
+  reason varchar(400) [not null]
+  created_at timestamptz [not null]
+}
+
+Ref: staff_shifts.staff_id > app_users.id
+Ref: reservation_items.reservation_id > reservations.id
+Ref: reservation_items.menu_item_id > menu_items.id
+Ref: reservation_deposits.reservation_id - reservations.id
+Ref: reservation_table_assignments.reservation_id > reservations.id
+Ref: reservation_table_assignments.table_id > restaurant_tables.id
+Ref: service_sessions.reservation_id - reservations.id
+Ref: dining_orders.service_session_id > service_sessions.id
+Ref: dining_order_items.order_id > dining_orders.id
+Ref: dining_order_items.menu_item_id > menu_items.id
+Ref: payments.service_session_id - service_sessions.id
+Ref: table_service_requests.table_id > restaurant_tables.id
+Ref: table_service_requests.service_session_id > service_sessions.id
+Ref: walk_in_visits.table_id > restaurant_tables.id
+Ref: walk_in_visits.reservation_id > reservations.id
+Ref: walk_in_events.walk_in_visit_id > walk_in_visits.id
+Ref: operational_notifications.reservation_id > reservations.id
+Ref: operational_timeouts.reservation_id > reservations.id
+Ref: operational_timeouts.table_id > restaurant_tables.id
+Ref: operational_timeout_events.timeout_id > operational_timeouts.id
+Ref: waiter_assignment_events.service_session_id > service_sessions.id
+Ref: waiter_assignment_events.reservation_id > reservations.id
+Ref: reservation_status_events.reservation_id > reservations.id

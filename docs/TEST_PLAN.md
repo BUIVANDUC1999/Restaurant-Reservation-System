@@ -6,7 +6,7 @@
 |---|---|---|
 | Public API | Lấy thực đơn | HTTP 200 và có món |
 | Validation | Đặt ngày trong quá khứ | HTTP 400, có lỗi trường ngày |
-| Capacity | Đặt đủ 300 chỗ rồi thêm 1 khách | Yêu cầu thứ hai bị từ chối |
+| Capacity | Đặt kín toàn bộ 8 bàn trong cùng khung giờ rồi tạo thêm đơn | Yêu cầu tiếp theo bị từ chối |
 | Authentication | Gọi API nhân viên khi chưa đăng nhập | Bị từ chối |
 | RBAC | Nhân viên đăng nhập và xem danh sách đặt bàn | HTTP 200 |
 | RBAC | Khách hàng gọi API Admin | HTTP 403 |

@@ -20,7 +20,7 @@ Content-Type: application/json
   "name": "Cá tầm rang muối",
   "category": "Đặc sản",
   "price": 360000,
-  "description": "Cá tầm Sa Pa rang muối giòn thơm.",
+  "description": "Cá tầm vùng cao rang muối giòn thơm.",
   "imageUrl": "https://example.com/ca-tam.jpg",
   "featured": true,
   "available": true
@@ -44,7 +44,7 @@ Content-Type: application/json
 
 {
   "fullName": "Nguyễn Văn An",
-  "phone": "0984353577",
+  "phone": "0900000000",
   "email": "an@example.com",
   "password": "Customer@123"
 }
@@ -60,7 +60,7 @@ Content-Type: application/json
 
 {
   "customerName": "Nguyễn Văn An",
-  "phone": "0984353577",
+  "phone": "0900000000",
   "email": "an@example.com",
   "reservationDate": "2026-08-01",
   "timeSlot": "DINNER",
@@ -77,7 +77,7 @@ Content-Type: application/json
 ## Tra cứu
 
 ```http
-GET /api/v1/reservations/lookup?code=KV-ABC123&phone=0984353577
+GET /api/v1/reservations/lookup?code=KV-ABC123&phone=0900000000
 ```
 
 ## Cập nhật trạng thái

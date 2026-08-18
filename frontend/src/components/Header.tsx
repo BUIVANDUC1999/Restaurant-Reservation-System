@@ -9,7 +9,7 @@ export default function Header(){
   const workspaceHome=user?.role==='ADMIN'?'/admin':user?.role==='STAFF'?'/staff':user?.role==='KITCHEN'?'/bep':'';
   return <>
     <div className="topbar"><span>Nhà hàng Khám Phá Việt — Nơi thưởng thức hương vị quê hương</span>
-      <a href="tel:0984353577"><Phone size={15}/> 0984 353 577</a></div>
+      <a href="tel:0900000000"><Phone size={15}/> 0900 000 000</a></div>
     <header className="header">
       <Link className="brand" to="/"><span className="brand-mark">KV</span>
         <span><b>KHÁM PHÁ VIỆT</b><small>Ẩm thực Tây Bắc</small></span></Link>

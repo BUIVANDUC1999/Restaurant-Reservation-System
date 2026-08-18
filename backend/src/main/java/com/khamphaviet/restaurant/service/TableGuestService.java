@@ -24,23 +24,28 @@ public class TableGuestService {
         this.tables=tables;this.assignments=assignments;this.reservations=reservations;this.sessions=sessions;
         this.requests=requests;this.notifications=notifications;
     }
-    public record GuestTable(Long id,String code,String name,String area,int seats,boolean activeSession,List<TableServiceRequest> requests){}
+    public record GuestTable(Long id,String code,String name,String area,int seats,boolean activeSession,
+                             String assignedStaffName,List<TableServiceRequest> requests){}
     public record CreateRequest(TableRequestType type,String note){}
 
     public GuestTable view(String token){
         RestaurantTable table=findTable(token);ServiceSession session=activeSession(table.getId(),false);
         return new GuestTable(table.getId(),table.getCode(),table.getName(),table.getArea(),table.getSeats(),session!=null,
+                session==null?null:session.getAssignedStaffName(),
                 requests.findByTableIdAndStatusInOrderByCreatedAtDesc(table.getId(),List.of(TableRequestStatus.NEW,TableRequestStatus.ACKNOWLEDGED)));
     }
     @Transactional
     public TableServiceRequest create(String token,CreateRequest request){
-        RestaurantTable table=findTable(token);ServiceSession session=activeSession(table.getId(),true);
+        RestaurantTable table=findTable(token);ServiceSession session=activeSession(table.getId(),false);
         if(request.type()==null)throw new BusinessException("Hãy chọn loại yêu cầu");
+        if(session==null&&request.type()!=TableRequestType.CALL_WAITER)
+            throw new BusinessException("Bàn chưa check-in. Hãy gọi nhân viên để được hỗ trợ");
         if(requests.countByTableIdAndCreatedAtAfter(table.getId(),Instant.now().minusSeconds(30))>=2)
             throw new BusinessException("Bạn đã gửi yêu cầu. Vui lòng chờ nhân viên phản hồi");
-        TableServiceRequest saved=requests.save(new TableServiceRequest(table.getId(),session.getId(),request.type(),request.note()));
-        notifications.createStaffAlert(session.getReservationId(),NotificationType.TABLE_CALL,
-                table.getCode()+" gọi nhân viên",label(request.type())+(request.note()==null?"":" – "+request.note()),"table-call-"+saved.getId());
+        TableServiceRequest saved=requests.save(new TableServiceRequest(table.getId(),session==null?null:session.getId(),request.type(),request.note()));
+        String message=session==null?"Khách cần hỗ trợ nhận bàn/đặt món":label(request.type());
+        notifications.createStaffAlert(session==null?null:session.getReservationId(),NotificationType.TABLE_CALL,
+                table.getCode()+" gọi nhân viên",message+(request.note()==null?"":" – "+request.note()),"table-call-"+saved.getId());
         return saved;
     }
     public List<TableServiceRequest> staffFeed(){return requests.findTop100ByOrderByCreatedAtDesc();}

@@ -22,7 +22,6 @@ import java.util.HashSet;
 
 @Service
 public class ReservationService {
-    private static final int TOTAL_CAPACITY = 300;
     private static final List<ReservationStatus> OCCUPYING = List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
     private static final List<DiningOrderStatus> OPEN_ORDERS = List.of(DiningOrderStatus.SUBMITTED, DiningOrderStatus.PREPARING, DiningOrderStatus.READY);
     private static final String CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -66,7 +65,11 @@ public class ReservationService {
         if (date.isBefore(LocalDate.now())) throw new BusinessException("Ngày đặt bàn không được ở trong quá khứ");
         int reserved = repository.findByReservationDateAndTimeSlotAndStatusIn(date, slot, OCCUPYING)
                 .stream().mapToInt(Reservation::getPartySize).sum();
-        int remaining = Math.max(0, TOTAL_CAPACITY - reserved);
+        int totalCapacity = tableRepository.findAllByActiveTrueOrderByFloorAscCodeAsc().stream()
+                .filter(table -> table.getStatus() != TableStatus.INACTIVE)
+                .mapToInt(RestaurantTable::getSeats)
+                .sum();
+        int remaining = Math.max(0, totalCapacity - reserved);
         return new ReservationDtos.AvailabilityResponse(remaining >= partySize, remaining,
                 remaining >= partySize ? "Còn chỗ phù hợp" : "Khung giờ này không đủ chỗ");
     }

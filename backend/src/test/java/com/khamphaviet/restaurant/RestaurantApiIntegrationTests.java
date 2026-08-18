@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khamphaviet.restaurant.deposit.DepositMethod;
 import com.khamphaviet.restaurant.deposit.ReservationDepositRepository;
+import com.khamphaviet.restaurant.table.RestaurantTable;
+import com.khamphaviet.restaurant.table.RestaurantTableRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -11,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -30,12 +33,34 @@ class RestaurantApiIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper objectMapper;
     @Autowired ReservationDepositRepository deposits;
+    @Autowired RestaurantTableRepository tables;
 
     @Test
     void publicMenuIsAvailable() throws Exception {
         mvc.perform(get("/api/v1/menu/items"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").isNumber());
+    }
+
+    @Test
+    @Transactional
+    void tableQrCanCallWaiterWithoutLoginOrActiveSession() throws Exception {
+        String publicToken = "public-qr-integration-test";
+        RestaurantTable table = tables.save(new RestaurantTable(
+                "TQR", "Bàn kiểm thử QR", "Tầng trệt", "Kiểm thử", 4,
+                10, 10, "ROUND", publicToken));
+
+        mvc.perform(get("/api/v1/table-guest/{token}", publicToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("TQR"))
+                .andExpect(jsonPath("$.activeSession").value(false));
+
+        mvc.perform(post("/api/v1/table-guest/{token}/requests", publicToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"CALL_WAITER\",\"note\":\"Cần hỗ trợ đặt món\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tableId").value(table.getId()))
+                .andExpect(jsonPath("$.status").value("NEW"));
     }
 
     @Test
@@ -69,7 +94,7 @@ class RestaurantApiIntegrationTests {
                 "phone", "0901234567",
                 "reservationDate", date,
                 "timeSlot", "DINNER",
-                "partySize", 300
+                "partySize", 40
         );
         var oneMoreGuest = Map.of(
                 "customerName", "Khach den sau",
@@ -83,7 +108,7 @@ class RestaurantApiIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(fullCapacity)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.depositAmount").value(60000000))
+                .andExpect(jsonPath("$.depositAmount").value(8000000))
                 .andExpect(jsonPath("$.depositStatus").value("PENDING"));
         mvc.perform(post("/api/v1/reservations")
                         .contentType(MediaType.APPLICATION_JSON)

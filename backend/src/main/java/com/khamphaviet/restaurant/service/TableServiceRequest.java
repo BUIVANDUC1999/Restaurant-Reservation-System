@@ -8,7 +8,7 @@ import java.time.Instant;
 public class TableServiceRequest {
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @Column(nullable=false) private Long tableId;
-    @Column(nullable=false) private Long serviceSessionId;
+    private Long serviceSessionId;
     @Enumerated(EnumType.STRING) @Column(nullable=false) private TableRequestType type;
     @Enumerated(EnumType.STRING) @Column(nullable=false) private TableRequestStatus status;
     @Column(length=300) private String note;

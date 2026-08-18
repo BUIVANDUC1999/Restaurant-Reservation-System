@@ -32,7 +32,9 @@ const overdueMinutes=(deadline:string)=>Math.max(1,Math.floor((Date.now()-new Da
 const guestBaseStorageKey = 'restaurant_guest_base_url';
 const initialGuestBaseUrl = () => {
   const configured = import.meta.env.VITE_GUEST_BASE_URL?.trim();
-  return (localStorage.getItem(guestBaseStorageKey) || configured || location.origin).replace(/\/$/, '');
+  const currentHostIsLan = !['localhost', '127.0.0.1'].includes(location.hostname);
+  return (currentHostIsLan ? location.origin : configured || localStorage.getItem(guestBaseStorageKey) || location.origin)
+    .replace(/\/$/, '');
 };
 
 export default function TablesPage() {
@@ -320,7 +322,7 @@ export default function TablesPage() {
       </label>
       {guestBaseUrl.includes('localhost')&&<p className="qr-warning">Điện thoại không mở được localhost. Hãy nhập địa chỉ Wi-Fi của máy tính.</p>}
       {guestUrl&&<img src={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(guestUrl)}`} alt={`QR ${qr.code}`}/>}
-      <p>Điện thoại và máy tính cần dùng cùng Wi-Fi. QR chỉ nhận yêu cầu khi bàn có phiên phục vụ.</p>
+      <p>Điện thoại và máy tính cần dùng cùng Wi-Fi. Khách có thể gọi nhân viên hỗ trợ ngay cả trước khi check-in.</p>
       <b className="qr-url">{guestUrl}</b><button onClick={() => window.print()}>In mã QR</button>
     </div></div>}
   </section>;
