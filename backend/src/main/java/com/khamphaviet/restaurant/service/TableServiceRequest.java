@@ -25,4 +25,5 @@ public class TableServiceRequest {
         if(next==TableRequestStatus.ACKNOWLEDGED)this.acknowledgedAt=Instant.now();
         if(next==TableRequestStatus.DONE||next==TableRequestStatus.CANCELLED)this.completedAt=Instant.now();
     }
+    public void simulateCreatedAt(Instant createdAt){this.createdAt=createdAt;}
 }

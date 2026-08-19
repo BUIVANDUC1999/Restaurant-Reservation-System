@@ -15,6 +15,16 @@ public final class WalkInDtos {
             @Size(max=300) String priorityReason,
             @Min(0) @Max(240) Integer quotedWaitMinutes,
             @Size(max=500) String note) {}
+    public record DemoScenarioRequest(
+            @NotBlank @Size(max=120) String customerName,
+            @Pattern(regexp="^[0-9+ ]{9,15}$") String phone,
+            @NotNull @Min(1) @Max(30) Integer partySize,
+            @Size(max=100) String areaPreference,
+            WalkInPriority priority,
+            @Size(max=300) String priorityReason,
+            @NotNull @Min(1) @Max(240) Integer quotedWaitMinutes,
+            @NotNull WalkInSlaLevel slaLevel,
+            @Size(max=500) String note) {}
     public record OfferRequest(@NotNull Long tableId,@Size(max=500) String note) {}
     public record ActionRequest(@Size(max=500) String note,@Min(0)@Max(240) Integer quotedWaitMinutes) {}
     public record SuggestedTable(Long id,String code,String name,String area,int seats,int seatWaste,

@@ -62,6 +62,7 @@ public class Reservation {
     }
 
     public void markWalkIn() { this.source = ReservationSource.WALK_IN; }
+    public void simulateExpiredHold(Instant expiredAt) { this.holdExpiresAt = expiredAt; }
 
     public LocalTime effectiveTime() {
         return reservationTime == null ? ("LUNCH".equals(timeSlot) ? LocalTime.of(11, 0) : LocalTime.of(17, 30)) : reservationTime;

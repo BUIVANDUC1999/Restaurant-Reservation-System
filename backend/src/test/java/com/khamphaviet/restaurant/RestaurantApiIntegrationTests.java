@@ -233,6 +233,23 @@ class RestaurantApiIntegrationTests {
     }
 
     @Test
+    void adminCanOpenDashboardMetricDetails() throws Exception {
+        var result = mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@khamphaviet.vn\",\"password\":\"Admin@123\"}"))
+                .andExpect(status().isOk()).andReturn();
+        String token = objectMapper.readTree(result.getResponse().getContentAsString()).get("accessToken").asText();
+
+        mvc.perform(get("/api/v1/admin/reports/operations/details")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservationsToday").isArray())
+                .andExpect(jsonPath("$.activeSessions").isArray())
+                .andExpect(jsonPath("$.paymentsToday").isArray())
+                .andExpect(jsonPath("$.paymentsThisMonth").isArray());
+    }
+
+    @Test
     void exactTimeAndCleaningBufferPreventOverlappingTableBookings() throws Exception {
         String date=LocalDate.now().plusYears(2).plusDays(17).toString();
         var available=mvc.perform(get("/api/v1/reservations/available-tables")
@@ -308,19 +325,57 @@ class RestaurantApiIntegrationTests {
     }
 
     @Test
-    void demoScenarioCreatesAllWalkInSlaLevelsOnlyOnce() throws Exception {
+    @Transactional
+    void demoScenarioCreatesOnlyTheSituationConfiguredByTheUser() throws Exception {
         String token = staffToken();
         mvc.perform(post("/api/v1/staff/walk-ins/demo-scenario")
-                        .header("Authorization", "Bearer " + token))
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerName":"Tình huống do người dùng tạo","phone":"0901000008",
+                                 "partySize":3,"priority":"NORMAL","quotedWaitMinutes":10,
+                                 "slaLevel":"CRITICAL","note":"Kiểm thử cấu hình thủ công"}
+                                """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.visits").value(4));
+                .andExpect(jsonPath("$.customerName").value("[DEMO] Tình huống do người dùng tạo"))
+                .andExpect(jsonPath("$.status").value("WAITING"))
+                .andExpect(jsonPath("$.slaLevel").value("CRITICAL"));
         mvc.perform(post("/api/v1/staff/walk-ins/demo-scenario")
-                        .header("Authorization", "Bearer " + token))
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerName":"Tình huống cảnh báo thứ hai","phone":"0901000009",
+                                 "partySize":2,"priority":"ELDERLY","priorityReason":"Khách cao tuổi",
+                                 "quotedWaitMinutes":20,"slaLevel":"WARNING"}
+                                """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.created").value(false));
-        mvc.perform(get("/api/v1/staff/walk-ins").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.customerName").value("[DEMO] Tình huống cảnh báo thứ hai"))
+                .andExpect(jsonPath("$.slaLevel").value("WARNING"));
+    }
+
+    @Test
+    @Transactional
+    void fullDemoStudioCanCreateAnAutomaticallyOverdueDish() throws Exception {
+        String token=staffToken();
+        mvc.perform(post("/api/v1/staff/demo-scenarios")
+                        .header("Authorization","Bearer "+token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"KITCHEN_OVERDUE_WARNING","customerName":"Khách kiểm thử món chậm",
+                                 "phone":"0901000010","partySize":2,"minutes":4,
+                                 "reason":"Quá ETA tự động","note":"Kiểm thử xưởng tình huống"}
+                                """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.customerName == '[DEMO] Khách chờ quá lâu')].slaLevel").value("CRITICAL"));
+                .andExpect(jsonPath("$.group").value("Bếp & món ăn"))
+                .andExpect(jsonPath("$.title").value("Món tự động quá ETA"))
+                .andExpect(jsonPath("$.targetPath").value("/bep"))
+                .andExpect(jsonPath("$.entityId").isNumber())
+                .andExpect(jsonPath("$.tableId").isNumber());
+
+        mvc.perform(get("/api/v1/staff/timeouts")
+                        .header("Authorization","Bearer "+token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.type == 'KITCHEN_SLA')]").isNotEmpty());
     }
 
     @Test

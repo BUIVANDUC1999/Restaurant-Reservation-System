@@ -230,7 +230,7 @@ Mức SLA:
 - `WARNING`: sắp hết thời gian chờ hoặc thời gian phản hồi.
 - `CRITICAL`: đã quá thời gian cam kết.
 
-Trong profile demo, nút **Tạo tình huống demo** tạo các nhóm NORMAL, WARNING, CRITICAL và khách ưu tiên để trình bày nhanh.
+Trong profile demo, nút **Tạo tình huống demo** mở một xưởng tình huống cho toàn hệ thống. Có 5 nhóm và 23 lựa chọn: khách tại quán; lịch đặt mới/sắp đến/trễ/hết hạn cọc; món mới/đang nấu/bếp báo chậm/tự động quá ETA/món xong; QR gọi nhân viên/nước/thanh toán/chưa tiếp nhận; bàn chờ dọn/dọn chậm. Người trình bày tự chọn dữ liệu và mỗi lần xác nhận chỉ tạo đúng một tình huống.
 
 ## 6. Luồng gọi món và bếp
 
@@ -400,10 +400,11 @@ Các màn hình vận hành nhận cảnh báo bằng SSE realtime. Polling đ�
 
 1. Mở `/staff/walk-in`.
 2. Bấm **Tạo tình huống demo**.
-3. Giải thích ba mức NORMAL, WARNING và CRITICAL.
-4. Chọn bàn từ danh sách đề xuất an toàn.
-5. Mời khách, xác nhận khách ngồi và bắt đầu phục vụ.
-6. Mở trung tâm timeout, nhận việc, chuyển việc và hoàn tất một cảnh báo.
+3. Chọn nhóm nghiệp vụ và tình huống cần trình bày; nhập khách, bàn, món, số phút và lý do phù hợp rồi xác nhận.
+4. Với ví dụ món chậm, chọn **Bếp & món ăn → Món tự động quá ETA**, sau đó mở `/bep` để xem món và trung tâm timeout để xem cảnh báo tự động.
+5. Với ví dụ khách tại quán, mở thẻ vừa tạo để giải thích SLA, chọn bàn từ đề xuất an toàn, mời khách và xác nhận khách ngồi.
+6. Với ví dụ QR hoặc dọn bàn, mở màn hình phục vụ/bàn để tiếp nhận và hoàn tất tình huống.
+7. Mở trung tâm timeout, nhận việc, chuyển việc và hoàn tất một cảnh báo.
 
 ### Kịch bản E — Thanh toán cuối bữa
 

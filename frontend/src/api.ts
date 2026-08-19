@@ -1,4 +1,4 @@
-import type {AuthUser,AvailableTable,Checkout,DiningOrder,GuestTable,MenuItem,Notification,OperationalTimeout,OperationsReport,PayPalConfig,PayPalOrder,Reservation,ReservationStatusEvent,RestaurantTable,StaffShift,TableOverview,TableRequest,TimeoutPolicy,UserStats,UserSummary,WaiterAssignment,WaiterAssignmentEvent,WaiterSummary,WalkInMetrics,WalkInVisit} from './types'
+import type {AuthUser,AvailableTable,Checkout,DemoScenarioInput,DemoScenarioResult,DiningOrder,GuestTable,MenuItem,Notification,OperationalTimeout,OperationsDetails,OperationsReport,PayPalConfig,PayPalOrder,Reservation,ReservationStatusEvent,RestaurantTable,StaffShift,TableOverview,TableRequest,TimeoutPolicy,UserStats,UserSummary,WaiterAssignment,WaiterAssignmentEvent,WaiterSummary,WalkInDemoScenarioInput,WalkInMetrics,WalkInVisit} from './types'
 const BASE=import.meta.env.VITE_API_URL||'/api/v1'
 const token=()=>{try{return JSON.parse(localStorage.getItem('restaurant_auth')||'null')?.accessToken}catch{return null}}
 async function request<T>(path:string,options?:RequestInit):Promise<T>{const auth=token();const response=await fetch(`${BASE}${path}`,{headers:{'Content-Type':'application/json',...(auth?{Authorization:`Bearer ${auth}`}:{}) ,...options?.headers},...options});const text=await response.text();let data:null|Record<string,unknown>=null;try{data=text?JSON.parse(text):null}catch{data=null}if(!response.ok)throw new Error(typeof data?.message==='string'?data.message:(response.status===401||response.status===403?'Phiên đăng nhập không hợp lệ':'Có lỗi xảy ra'));return data as T}
@@ -7,6 +7,7 @@ export const api={
   register:(body:unknown)=>request<AuthUser>('/auth/register',{method:'POST',body:JSON.stringify(body)}),
   adminUserStats:()=>request<UserStats>('/admin/users/stats'),
   adminOperationsReport:()=>request<OperationsReport>('/admin/reports/operations'),
+  adminOperationsDetails:()=>request<OperationsDetails>('/admin/reports/operations/details'),
   adminUsers:()=>request<UserSummary[]>('/admin/users'),
   menu:()=>request<MenuItem[]>('/menu/items'),
   staffMenu:()=>request<MenuItem[]>('/staff/menu/items'),
@@ -61,7 +62,8 @@ export const api={
   walkIns:()=>request<WalkInVisit[]>('/staff/walk-ins'),
   walkInMetrics:()=>request<WalkInMetrics>('/staff/walk-ins/metrics'),
   createWalkIn:(body:unknown)=>request<WalkInVisit>('/staff/walk-ins',{method:'POST',body:JSON.stringify(body)}),
-  createWalkInDemo:()=>request<{created:boolean;visits:number;message:string}>('/staff/walk-ins/demo-scenario',{method:'POST'}),
+  createWalkInDemo:(body:WalkInDemoScenarioInput)=>request<WalkInVisit>('/staff/walk-ins/demo-scenario',{method:'POST',body:JSON.stringify(body)}),
+  createDemoScenario:(body:DemoScenarioInput)=>request<DemoScenarioResult>('/staff/demo-scenarios',{method:'POST',body:JSON.stringify(body)}),
   reviseWalkInQuote:(id:number,quotedWaitMinutes:number,note='')=>request<WalkInVisit>(`/staff/walk-ins/${id}/quote`,{method:'PATCH',body:JSON.stringify({quotedWaitMinutes,note})}),
   offerWalkInTable:(id:number,tableId:number,note='')=>request<WalkInVisit>(`/staff/walk-ins/${id}/offer`,{method:'POST',body:JSON.stringify({tableId,note})}),
   walkInAction:(id:number,action:string,body:unknown={})=>request<WalkInVisit>(`/staff/walk-ins/${id}/${action}`,{method:'POST',body:JSON.stringify(body)}),

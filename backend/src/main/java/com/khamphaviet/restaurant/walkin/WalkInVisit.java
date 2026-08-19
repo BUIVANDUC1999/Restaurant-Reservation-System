@@ -45,6 +45,10 @@ public class WalkInVisit {
     public void reviseQuote(int minutes) {
         this.quotedWaitMinutes=minutes; this.expectedSeatAt=Instant.now().plusSeconds(minutes*60L);
     }
+    public void simulateWaitingSince(Instant simulatedArrival) {
+        this.arrivedAt=simulatedArrival;
+        this.expectedSeatAt=simulatedArrival.plusSeconds(quotedWaitMinutes*60L);
+    }
     public void offer(Long tableId, Long reservationId, int expiryMinutes) {
         this.status=WalkInStatus.TABLE_OFFERED; this.tableId=tableId; this.reservationId=reservationId;
         this.offeredAt=Instant.now(); this.offerExpiresAt=offeredAt.plusSeconds(expiryMinutes*60L); this.callCount++;

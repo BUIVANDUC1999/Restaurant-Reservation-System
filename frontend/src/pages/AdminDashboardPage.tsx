@@ -5,7 +5,7 @@ import {
 import {useEffect, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {api} from '../api';
-import type {DiningOrder, DiningOrderItem, OperationsReport, OperationalTimeout, TableOverview, UserStats} from '../types';
+import type {AuthUser, DiningOrder, DiningOrderItem, OperationsDetails, OperationsReport, OperationalTimeout, TableOverview, UserStats, UserSummary} from '../types';
 import {useOperationalEvents} from '../hooks/useOperationalEvents';
 
 const money=(value:number)=>value.toLocaleString('vi-VN')+' ₫';
@@ -18,6 +18,15 @@ const itemLabels:Record<DiningOrderItem['status'],string>={
   READY:'Đã xong · chờ mang',SERVED:'Đã phục vụ',CANCELLED:'Đã hủy'
 };
 const activeItemStatuses:DiningOrderItem['status'][]=['SUBMITTED','PREPARING','DELAYED'];
+type MetricDetail='ALL_USERS'|'EMPLOYEES'|'CUSTOMERS'|'ACTIVE_USERS'|'TODAY_RESERVATIONS'|'ACTIVE_SESSIONS'|'TODAY_REVENUE'|'MONTH_REVENUE';
+const metricTitles:Record<MetricDetail,string>={
+  ALL_USERS:'Toàn bộ tài khoản',EMPLOYEES:'Tài khoản nhân viên',CUSTOMERS:'Tài khoản khách hàng',
+  ACTIVE_USERS:'Tài khoản đang hoạt động',TODAY_RESERVATIONS:'Đặt bàn hôm nay',
+  ACTIVE_SESSIONS:'Các bàn đang phục vụ',TODAY_REVENUE:'Doanh thu hôm nay',MONTH_REVENUE:'Doanh thu tháng này'
+};
+const roleLabels:Record<AuthUser['role'],string>={ADMIN:'Quản trị viên',STAFF:'Nhân viên phục vụ',KITCHEN:'Nhân viên bếp',CUSTOMER:'Khách hàng'};
+const reservationLabels:Record<string,string>={PENDING:'Chờ xác nhận',CONFIRMED:'Đã xác nhận',CHECKED_IN:'Đã đến',COMPLETED:'Hoàn tất',CANCELLED:'Đã hủy',REJECTED:'Từ chối',NO_SHOW:'Không đến',EXPIRED:'Hết hạn'};
+const paymentLabels:Record<string,string>={CASH:'Tiền mặt',BANK_TRANSFER:'Chuyển khoản',QR:'QR',CARD:'Thẻ',PAYPAL:'PayPal'};
 
 function itemTiming(item:DiningOrderItem,now:number){
   if(!activeItemStatuses.includes(item.status))return{delayed:false,minutes:0,text:''};
@@ -33,19 +42,22 @@ function itemTiming(item:DiningOrderItem,now:number){
 export default function AdminDashboardPage(){
   const[stats,setStats]=useState<UserStats>();
   const[report,setReport]=useState<OperationsReport>();
+  const[operationDetails,setOperationDetails]=useState<OperationsDetails>();
+  const[users,setUsers]=useState<UserSummary[]>([]);
   const[tables,setTables]=useState<TableOverview[]>([]);
   const[orders,setOrders]=useState<DiningOrder[]>([]);
   const[timeouts,setTimeouts]=useState<OperationalTimeout[]>([]);
   const[selectedId,setSelectedId]=useState<number>();
+  const[metricDetail,setMetricDetail]=useState<MetricDetail>();
   const[now,setNow]=useState(Date.now());
   const[error,setError]=useState('');
 
   async function load(){
     try{
-      const[users,operations,tableData,orderData,timeoutData]=await Promise.all([
-        api.adminUserStats(),api.adminOperationsReport(),api.tableOverview(),api.kitchenOrders(),api.timeouts()
+      const[userStats,operations,details,userData,tableData,orderData,timeoutData]=await Promise.all([
+        api.adminUserStats(),api.adminOperationsReport(),api.adminOperationsDetails(),api.adminUsers(),api.tableOverview(),api.kitchenOrders(),api.timeouts()
       ]);
-      setStats(users);setReport(operations);setTables(tableData);setOrders(orderData);setTimeouts(timeoutData);setError('');
+      setStats(userStats);setReport(operations);setOperationDetails(details);setUsers(userData);setTables(tableData);setOrders(orderData);setTimeouts(timeoutData);setError('');
     }catch(err){setError(err instanceof Error?err.message:'Không tải được thống kê');}
   }
   const realtime=useOperationalEvents(()=>void load());
@@ -71,6 +83,12 @@ export default function AdminDashboardPage(){
   const servingTables=tables.filter(table=>table.serviceSessionId);
   const totalGuests=servingTables.reduce((sum,table)=>sum+(table.partySize||0),0);
   const tablesWithDelay=tables.filter(table=>delayedItems(table).length>0);
+  const detailUsers=users.filter(user=>metricDetail==='EMPLOYEES'?['STAFF','KITCHEN'].includes(user.role):
+    metricDetail==='CUSTOMERS'?user.role==='CUSTOMER':metricDetail==='ACTIVE_USERS'?user.active:true);
+  const detailPayments=metricDetail==='TODAY_REVENUE'?operationDetails?.paymentsToday||[]:
+    metricDetail==='MONTH_REVENUE'?operationDetails?.paymentsThisMonth||[]:[];
+  const metricLink=metricDetail&&['ALL_USERS','EMPLOYEES','CUSTOMERS','ACTIVE_USERS'].includes(metricDetail)?'/admin/tai-khoan':
+    metricDetail==='TODAY_RESERVATIONS'?'/staff':metricDetail==='ACTIVE_SESSIONS'?'/staff/ban':'/staff/thanh-toan';
 
   return <section className="page-section container admin-page">
     <div className="admin-live-heading">
@@ -80,18 +98,18 @@ export default function AdminDashboardPage(){
     </div>
     {error&&<p className="error">{error}</p>}
     <div className="admin-stats">
-      <article><Users/><span><b>{stats?.totalCount??'—'}</b><small>Tổng tài khoản</small></span></article>
-      <article><UserCog/><span><b>{stats?.employeeCount??'—'}</b><small>Tài khoản nhân viên</small></span></article>
-      <article><UsersRound/><span><b>{stats?.customerCount??'—'}</b><small>Tài khoản khách hàng</small></span></article>
-      <article><Activity/><span><b>{stats?.activeCount??'—'}</b><small>Tài khoản hoạt động</small></span></article>
+      <button type="button" className="admin-stat-card" onClick={()=>setMetricDetail('ALL_USERS')}><Users/><span><b>{stats?.totalCount??'—'}</b><small>Tổng tài khoản</small><em>Xem chi tiết →</em></span></button>
+      <button type="button" className="admin-stat-card" onClick={()=>setMetricDetail('EMPLOYEES')}><UserCog/><span><b>{stats?.employeeCount??'—'}</b><small>Tài khoản nhân viên</small><em>Xem chi tiết →</em></span></button>
+      <button type="button" className="admin-stat-card" onClick={()=>setMetricDetail('CUSTOMERS')}><UsersRound/><span><b>{stats?.customerCount??'—'}</b><small>Tài khoản khách hàng</small><em>Xem chi tiết →</em></span></button>
+      <button type="button" className="admin-stat-card" onClick={()=>setMetricDetail('ACTIVE_USERS')}><Activity/><span><b>{stats?.activeCount??'—'}</b><small>Tài khoản hoạt động</small><em>Xem chi tiết →</em></span></button>
     </div>
 
     <h2 className="admin-section-title">Vận hành hôm nay</h2>
     <div className="admin-stats operations-stats">
-      <article><CalendarCheck/><span><b>{report?.reservationsToday??'—'}</b><small>Đặt bàn hôm nay</small></span></article>
-      <article><Activity/><span><b>{report?.activeSessions??'—'}</b><small>Bàn đang phục vụ</small></span></article>
-      <article><Banknote/><span><b>{report?money(report.revenueToday):'—'}</b><small>Doanh thu hôm nay</small></span></article>
-      <article><Banknote/><span><b>{report?money(report.revenueThisMonth):'—'}</b><small>Doanh thu tháng này</small></span></article>
+      <button type="button" className="admin-stat-card" onClick={()=>setMetricDetail('TODAY_RESERVATIONS')}><CalendarCheck/><span><b>{report?.reservationsToday??'—'}</b><small>Đặt bàn hôm nay</small><em>Xem danh sách →</em></span></button>
+      <button type="button" className="admin-stat-card" onClick={()=>setMetricDetail('ACTIVE_SESSIONS')}><Activity/><span><b>{report?.activeSessions??'—'}</b><small>Bàn đang phục vụ</small><em>Xem từng bàn →</em></span></button>
+      <button type="button" className="admin-stat-card" onClick={()=>setMetricDetail('TODAY_REVENUE')}><Banknote/><span><b>{report?money(report.revenueToday):'—'}</b><small>Doanh thu hôm nay</small><em>Xem hóa đơn →</em></span></button>
+      <button type="button" className="admin-stat-card" onClick={()=>setMetricDetail('MONTH_REVENUE')}><Banknote/><span><b>{report?money(report.revenueThisMonth):'—'}</b><small>Doanh thu tháng này</small><em>Xem hóa đơn →</em></span></button>
     </div>
 
     <div className="admin-table-section">
@@ -163,6 +181,28 @@ export default function AdminDashboardPage(){
         </section>
         <footer><Link to="/staff/ban" onClick={()=>setSelectedId(undefined)}>Điều phối nhân viên</Link><Link to="/bep" onClick={()=>setSelectedId(undefined)}>Mở bảng bếp</Link></footer>
       </aside>
+    </div>}
+
+    {metricDetail&&<div className="admin-metric-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setMetricDetail(undefined);}}>
+      <section className="admin-metric-detail">
+        <header><div><p className="eyebrow dark">CHI TIẾT CHỈ SỐ</p><h2>{metricTitles[metricDetail]}</h2><span>Dữ liệu mới nhất từ hệ thống vận hành</span></div>
+          <button type="button" onClick={()=>setMetricDetail(undefined)} aria-label="Đóng chi tiết"><X/></button></header>
+        <div className="admin-metric-content">
+          {['ALL_USERS','EMPLOYEES','CUSTOMERS','ACTIVE_USERS'].includes(metricDetail)&&<div className="admin-metric-table-wrap"><table><thead><tr><th>Họ tên</th><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th>Ngày tạo</th></tr></thead>
+            <tbody>{detailUsers.map(user=><tr key={user.id}><td><b>{user.fullName}</b></td><td>{user.email}</td><td>{roleLabels[user.role]}</td><td><i className={user.active?'active':'inactive'}>{user.active?'Hoạt động':'Đã khóa'}</i></td><td>{new Date(user.createdAt).toLocaleDateString('vi-VN')}</td></tr>)}</tbody></table>
+            {!detailUsers.length&&<p className="admin-metric-empty">Chưa có tài khoản thuộc nhóm này.</p>}</div>}
+          {metricDetail==='TODAY_RESERVATIONS'&&<div className="admin-metric-table-wrap"><table><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Giờ / số khách</th><th>Bàn</th><th>Trạng thái</th></tr></thead>
+            <tbody>{operationDetails?.reservationsToday.map(item=><tr key={item.id}><td><b>{item.code}</b><small>{item.source==='ONLINE'?'Đặt online':'Khách tại quán'}</small></td><td>{item.customerName}<small>{item.phone}</small></td><td>{item.reservationTime.slice(0,5)} · {item.partySize} khách</td><td>{item.tableCodes.join(', ')||'Chưa xếp'}</td><td><i>{reservationLabels[item.status]||item.status}</i></td></tr>)}</tbody></table>
+            {!operationDetails?.reservationsToday.length&&<p className="admin-metric-empty">Hôm nay chưa có lượt đặt bàn.</p>}</div>}
+          {metricDetail==='ACTIVE_SESSIONS'&&<div className="admin-session-list">{operationDetails?.activeSessions.map(item=><article key={item.serviceSessionId}><span><b>{item.tableCodes.join(', ')||'Chưa xếp bàn'}</b><small>{item.reservationCode}</small></span><div><strong>{item.customerName}</strong><small>{item.partySize} khách · Bắt đầu {new Date(item.openedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</small></div><em><UserCheck/> {item.assignedStaffName||'Chưa phân công'}</em></article>)}
+            {!operationDetails?.activeSessions.length&&<p className="admin-metric-empty">Hiện không có bàn đang phục vụ.</p>}</div>}
+          {['TODAY_REVENUE','MONTH_REVENUE'].includes(metricDetail)&&<div className="admin-metric-table-wrap"><table><thead><tr><th>Hóa đơn</th><th>Đơn / khách hàng</th><th>Phương thức</th><th>Thời gian</th><th>Thành tiền</th></tr></thead>
+            <tbody>{detailPayments.map(item=><tr key={item.id}><td><b>{item.invoiceCode}</b></td><td>{item.reservationCode}<small>{item.customerName}</small></td><td>{paymentLabels[item.method]||item.method}</td><td>{new Date(item.paidAt).toLocaleString('vi-VN')}</td><td><strong>{money(item.totalAmount)}</strong></td></tr>)}</tbody></table>
+            {!detailPayments.length&&<p className="admin-metric-empty">Chưa có hóa đơn đã thanh toán trong khoảng thời gian này.</p>}
+            {!!detailPayments.length&&<div className="admin-metric-total"><span>Tổng cộng</span><b>{money(detailPayments.reduce((sum,item)=>sum+item.totalAmount,0))}</b></div>}</div>}
+        </div>
+        <footer><small>Bấm vào khu vực ngoài cửa sổ để đóng.</small><Link to={metricLink} onClick={()=>setMetricDetail(undefined)}>Mở màn hình quản lý <b>→</b></Link></footer>
+      </section>
     </div>}
   </section>;
 }

@@ -79,7 +79,7 @@ cd frontend && npm ci && npm run lint && npm run build
 - Hệ thống đề xuất bàn theo sức chứa/khu vực/thời điểm sẵn sàng và từ chối bàn có lịch online sắp tới.
 - Luồng chuẩn: chờ bàn → mời khách → vào bàn → dùng bữa → thanh toán → dọn bàn → hoàn thành.
 - Khi khách vào bàn, module dùng chung phiên gọi món, bếp, QR tại bàn và thanh toán của hệ thống.
-- Trong profile `demo`, nút **Tạo tình huống demo** sinh một lần các nhóm NORMAL/WARNING/CRITICAL và khách ưu tiên để kiểm thử nhanh. Production mặc định khóa công cụ này.
+- Trong profile `demo`, nút **Tạo tình huống demo** mở xưởng gồm 23 tình huống thuộc 5 nhóm: khách tại quán, đặt bàn online, bếp/món ăn, QR gọi phục vụ và dọn bàn. Người trình bày tự chọn bàn, món, thời gian, lý do rồi xác nhận; dữ liệu không được tạo ngay khi chọn. Production mặc định khóa công cụ này.
 
 ### Gmail và SMS Sandbox
 

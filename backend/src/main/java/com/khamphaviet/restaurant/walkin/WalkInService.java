@@ -12,7 +12,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.security.SecureRandom;
 import java.time.*;
@@ -34,7 +33,6 @@ public class WalkInService {
     private final ServiceSessionRepository sessions;
     private final DiningOrderRepository orders;
     private final NotificationService notifications;
-    private final JdbcTemplate jdbc;
     private final boolean demoToolsEnabled;
     private final SecureRandom random = new SecureRandom();
 
@@ -42,33 +40,37 @@ public class WalkInService {
                          OperationalTimePolicy timePolicy, RestaurantTableRepository tables,
                          ReservationRepository reservations, ReservationTableAssignmentRepository assignments,
                          ReservationService reservationService, ServiceSessionRepository sessions,
-                         DiningOrderRepository orders, NotificationService notifications, JdbcTemplate jdbc,
+                         DiningOrderRepository orders, NotificationService notifications,
                          @Value("${app.demo-tools.enabled:false}") boolean demoToolsEnabled) {
         this.visits=visits;this.events=events;this.policy=policy;this.timePolicy=timePolicy;this.tables=tables;
         this.reservations=reservations;this.assignments=assignments;this.reservationService=reservationService;
-        this.sessions=sessions;this.orders=orders;this.notifications=notifications;this.jdbc=jdbc;
+        this.sessions=sessions;this.orders=orders;this.notifications=notifications;
         this.demoToolsEnabled=demoToolsEnabled;
     }
 
     @Transactional
-    public DemoScenarioResponse createDemoScenario(String actor) {
+    public WalkInDtos.VisitResponse createDemoScenario(WalkInDtos.DemoScenarioRequest request,String actor) {
         if (!demoToolsEnabled) throw new BusinessException("Công cụ tạo tình huống chỉ bật trong môi trường demo");
-        if (visits.existsByCustomerNameStartingWith("[DEMO]"))
-            return new DemoScenarioResponse(false, visits.count(), "Dữ liệu demo đã tồn tại; khởi động lại backend để làm mới.");
-        var normal=create(new WalkInDtos.CreateRequest("[DEMO] Gia đình An","0901000001",4,"Sảnh chính",
-                WalkInPriority.NORMAL,null,20,"Đang chờ đúng ETA"),actor);
-        var warning=create(new WalkInDtos.CreateRequest("[DEMO] Nhóm sắp quá SLA","0901000002",3,null,
-                WalkInPriority.NORMAL,null,10,"Cần chủ động cập nhật thời gian"),actor);
-        var critical=create(new WalkInDtos.CreateRequest("[DEMO] Khách chờ quá lâu","0901000003",2,"Cửa sổ",
-                WalkInPriority.NORMAL,null,5,"Tình huống khẩn cấp để test"),actor);
-        create(new WalkInDtos.CreateRequest("[DEMO] Khách cao tuổi","0901000004",2,null,
-                WalkInPriority.ELDERLY,"Ưu tiên chỗ ngồi dễ di chuyển",15,"Kiểm tra quy tắc ưu tiên"),actor);
-        jdbc.update("update walk_in_visits set arrived_at=dateadd('MINUTE',-12,current_timestamp), expected_seat_at=dateadd('MINUTE',-2,current_timestamp) where id=?", warning.id());
-        jdbc.update("update walk_in_visits set arrived_at=dateadd('MINUTE',-30,current_timestamp), expected_seat_at=dateadd('MINUTE',-20,current_timestamp) where id=?", critical.id());
-        return new DemoScenarioResponse(true,4,"Đã tạo hàng chờ NORMAL, WARNING, CRITICAL và nhóm ưu tiên.");
+        String name=request.customerName().trim();
+        if(!name.startsWith("[DEMO]")) name="[DEMO] "+name;
+        WalkInDtos.VisitResponse created=create(new WalkInDtos.CreateRequest(name,request.phone(),request.partySize(),
+                request.areaPreference(),request.priority(),request.priorityReason(),request.quotedWaitMinutes(),
+                request.note()),actor);
+        WalkInVisit visit=find(created.id());
+        long elapsedMinutes=switch(request.slaLevel()){
+            case NORMAL->Math.max(0,Math.round(request.quotedWaitMinutes()*.4));
+            case WARNING->Math.max(1,(long)Math.ceil(request.quotedWaitMinutes()*.85));
+            case CRITICAL->request.quotedWaitMinutes()+policy.getWaitCriticalGraceMinutes()+1L;
+        };
+        visit.simulateWaitingSince(Instant.now().minusSeconds(elapsedMinutes*60));
+        log(visit,WalkInStatus.WAITING,WalkInStatus.WAITING,"DEMO_SETUP",
+                "Tạo thủ công tình huống "+request.slaLevel()+" · đã chờ giả lập "+elapsedMinutes+" phút",actor);
+        if(request.slaLevel()!=WalkInSlaLevel.NORMAL)
+            notifications.createStaffAlert(null,NotificationType.WALK_IN_TIMEOUT,
+                    request.slaLevel()==WalkInSlaLevel.CRITICAL?"Walk-in demo quá SLA":"Walk-in demo sắp quá SLA",
+                    visit.getCode()+" · "+visit.getCustomerName(),"walk-in-demo-"+visit.getId());
+        return response(visit,true);
     }
-
-    public record DemoScenarioResponse(boolean created,long visits,String message) {}
 
     @Transactional
     public WalkInDtos.VisitResponse create(WalkInDtos.CreateRequest request, String actor) {

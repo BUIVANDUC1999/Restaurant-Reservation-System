@@ -43,6 +43,9 @@ public class RestaurantTable {
         if (this.status != status) this.statusChangedAt = Instant.now();
         this.status = status; this.active = status != TableStatus.INACTIVE;
     }
+    public void simulateStatusSince(TableStatus status, Instant since) {
+        this.status=status;this.active=status!=TableStatus.INACTIVE;this.statusChangedAt=since;
+    }
     public void updateLayout(int x, int y, String shape) { this.layoutX=x; this.layoutY=y; this.shape=shape; }
 }
 

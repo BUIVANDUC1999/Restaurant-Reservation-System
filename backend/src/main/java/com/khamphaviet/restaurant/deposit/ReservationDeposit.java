@@ -26,4 +26,5 @@ public class ReservationDeposit {
         this.status=DepositStatus.PAID; this.method=method; this.paidAt=Instant.now();
         this.providerOrderId=orderId; this.providerCaptureId=captureId;
     }
+    public void simulatePaidAt(Instant paidAt) { this.paidAt=paidAt; }
 }

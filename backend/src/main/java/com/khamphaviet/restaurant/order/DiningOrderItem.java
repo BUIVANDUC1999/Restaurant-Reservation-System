@@ -37,6 +37,16 @@ public class DiningOrderItem {
     }
     public void preparing(){if(status!=DiningOrderItemStatus.SUBMITTED)throw new IllegalStateException();status=DiningOrderItemStatus.PREPARING;startedAt=Instant.now();}
     public void delay(int minutes,String reason){if(status!=DiningOrderItemStatus.PREPARING&&status!=DiningOrderItemStatus.DELAYED)throw new IllegalStateException();status=DiningOrderItemStatus.DELAYED;delayedUntil=Instant.now().plusSeconds(minutes*60L);estimatedReadyAt=delayedUntil;delayReason=reason;}
+    public void simulateOverdueBy(int minutes,String reason){
+        if(status==DiningOrderItemStatus.SUBMITTED)preparing();
+        if(status!=DiningOrderItemStatus.PREPARING&&status!=DiningOrderItemStatus.DELAYED)throw new IllegalStateException();
+        Instant now=Instant.now();
+        status=DiningOrderItemStatus.PREPARING;
+        startedAt=now.minusSeconds((long)(preparationMinutes+minutes)*60);
+        estimatedReadyAt=now.minusSeconds((long)minutes*60);
+        delayedUntil=null;
+        delayReason=reason;
+    }
     public void ready(){if(status!=DiningOrderItemStatus.PREPARING&&status!=DiningOrderItemStatus.DELAYED)throw new IllegalStateException();status=DiningOrderItemStatus.READY;readyAt=Instant.now();}
     public void served(){if(status!=DiningOrderItemStatus.READY)throw new IllegalStateException();status=DiningOrderItemStatus.SERVED;servedAt=Instant.now();}
 }
