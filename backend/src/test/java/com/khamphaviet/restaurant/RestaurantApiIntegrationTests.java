@@ -56,6 +56,7 @@ class RestaurantApiIntegrationTests {
                 .andExpect(jsonPath("$.activeSession").value(false));
 
         mvc.perform(post("/api/v1/table-guest/{token}/requests", publicToken)
+                        .header("Origin", "http://192.168.1.115:5173")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"CALL_WAITER\",\"note\":\"Cần hỗ trợ đặt món\"}"))
                 .andExpect(status().isOk())
@@ -247,6 +248,40 @@ class RestaurantApiIntegrationTests {
                 .andExpect(jsonPath("$.activeSessions").isArray())
                 .andExpect(jsonPath("$.paymentsToday").isArray())
                 .andExpect(jsonPath("$.paymentsThisMonth").isArray());
+    }
+
+    @Test
+    @Transactional
+    void adminMobileCanManageUserStatusWithoutLockingItself() throws Exception {
+        var login = mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@khamphaviet.vn\",\"password\":\"Admin@123\"}"))
+                .andExpect(status().isOk()).andReturn();
+        String token = objectMapper.readTree(login.getResponse().getContentAsString())
+                .get("accessToken").asText();
+        var list = mvc.perform(get("/api/v1/admin/users")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andReturn();
+        JsonNode users = objectMapper.readTree(list.getResponse().getContentAsString());
+        long customerId = 0;
+        long adminId = 0;
+        for (JsonNode user : users) {
+            if ("CUSTOMER".equals(user.get("role").asText())) customerId = user.get("id").asLong();
+            if ("admin@khamphaviet.vn".equals(user.get("email").asText())) adminId = user.get("id").asLong();
+        }
+
+        mvc.perform(patch("/api/v1/admin/users/{id}/active", customerId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"active\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false));
+
+        mvc.perform(patch("/api/v1/admin/users/{id}/active", adminId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"active\":false}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

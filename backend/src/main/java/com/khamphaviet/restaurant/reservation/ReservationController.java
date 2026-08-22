@@ -31,6 +31,10 @@ public class ReservationController {
     }
     @PostMapping("/reservations") public ReservationDtos.ReservationResponse create(@Valid @RequestBody ReservationDtos.CreateRequest request) { return service.create(request); }
     @GetMapping("/reservations/lookup") public ReservationDtos.ReservationResponse lookup(@RequestParam String code, @RequestParam String phone) { return service.lookup(code, phone); }
+    @GetMapping("/customer/reservations")
+    public List<ReservationDtos.ReservationResponse> customerReservations(Authentication authentication) {
+        return service.listForCustomer(authentication.getName());
+    }
     @GetMapping("/staff/reservations") public List<ReservationDtos.ReservationResponse> list() { return service.list(); }
     @GetMapping("/staff/service-reservations") public List<ReservationDtos.ReservationResponse> serviceList() { return service.listForService(); }
     @PatchMapping("/staff/reservations/{id}/status")

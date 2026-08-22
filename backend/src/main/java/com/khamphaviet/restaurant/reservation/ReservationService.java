@@ -115,9 +115,18 @@ public class ReservationService {
         return listInternal(true);
     }
 
+    public List<ReservationDtos.ReservationResponse> listForCustomer(String email) {
+        if (email == null || email.isBlank()) return List.of();
+        return responses(repository.findByEmailIgnoreCaseOrderByReservationDateDescCreatedAtDesc(email.trim()));
+    }
+
     private List<ReservationDtos.ReservationResponse> listInternal(boolean includeWalkIn) {
         List<Reservation> reservations = repository.findAllByOrderByReservationDateDescCreatedAtDesc().stream()
                 .filter(r -> includeWalkIn || r.getSource() != ReservationSource.WALK_IN).toList();
+        return responses(reservations);
+    }
+
+    private List<ReservationDtos.ReservationResponse> responses(List<Reservation> reservations) {
         if (reservations.isEmpty()) return List.of();
         Map<Long, List<ReservationItem>> grouped = new HashMap<>();
         itemRepository.findByReservationIdInOrderByIdAsc(reservations.stream().map(Reservation::getId).toList())

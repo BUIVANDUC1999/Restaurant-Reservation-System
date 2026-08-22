@@ -1,7 +1,7 @@
 import type {AuthUser,AvailableTable,Checkout,DemoScenarioInput,DemoScenarioResult,DiningOrder,GuestTable,MenuItem,Notification,OperationalTimeout,OperationsDetails,OperationsReport,PayPalConfig,PayPalOrder,Reservation,ReservationStatusEvent,RestaurantTable,StaffShift,TableOverview,TableRequest,TimeoutPolicy,UserStats,UserSummary,WaiterAssignment,WaiterAssignmentEvent,WaiterSummary,WalkInDemoScenarioInput,WalkInMetrics,WalkInVisit} from './types'
 const BASE=import.meta.env.VITE_API_URL||'/api/v1'
 const token=()=>{try{return JSON.parse(localStorage.getItem('restaurant_auth')||'null')?.accessToken}catch{return null}}
-async function request<T>(path:string,options?:RequestInit):Promise<T>{const auth=token();const response=await fetch(`${BASE}${path}`,{headers:{'Content-Type':'application/json',...(auth?{Authorization:`Bearer ${auth}`}:{}) ,...options?.headers},...options});const text=await response.text();let data:null|Record<string,unknown>=null;try{data=text?JSON.parse(text):null}catch{data=null}if(!response.ok)throw new Error(typeof data?.message==='string'?data.message:(response.status===401||response.status===403?'Phiên đăng nhập không hợp lệ':'Có lỗi xảy ra'));return data as T}
+async function request<T>(path:string,options?:RequestInit,withAuth=true):Promise<T>{const auth=withAuth?token():null;const response=await fetch(`${BASE}${path}`,{headers:{'Content-Type':'application/json',...(auth?{Authorization:`Bearer ${auth}`}:{}) ,...options?.headers},...options});const text=await response.text();let data:null|Record<string,unknown>=null;try{data=text?JSON.parse(text):null}catch{data=null}if(!response.ok)throw new Error(typeof data?.message==='string'?data.message:(response.status===401||response.status===403?(withAuth?'Phiên đăng nhập không hợp lệ':'Yêu cầu QR bị từ chối'):'Có lỗi xảy ra'));return data as T}
 export const api={
   login:(email:string,password:string)=>request<AuthUser>('/auth/login',{method:'POST',body:JSON.stringify({email,password})}),
   register:(body:unknown)=>request<AuthUser>('/auth/register',{method:'POST',body:JSON.stringify(body)}),
@@ -20,6 +20,7 @@ export const api={
   depositPayPalConfig:(code:string)=>request<PayPalConfig>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/config`),
   createDepositPayPal:(code:string,phone:string)=>request<PayPalOrder>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/orders`,{method:'POST',body:JSON.stringify({phone})}),
   captureDepositPayPal:(code:string,phone:string,orderId:string)=>request<unknown>(`/reservations/${encodeURIComponent(code)}/deposit/paypal/orders/capture`,{method:'POST',body:JSON.stringify({phone,orderId})}),
+  customerReservations:()=>request<Reservation[]>('/customer/reservations'),
   staffReservations:()=>request<Reservation[]>('/staff/reservations'),
   staffServiceReservations:()=>request<Reservation[]>('/staff/service-reservations'),
   updateStatus:(id:number,status:string,reason?:string)=>request<Reservation>(`/staff/reservations/${id}/status`,{method:'PATCH',body:JSON.stringify({status,reason})}),
@@ -68,8 +69,8 @@ export const api={
   offerWalkInTable:(id:number,tableId:number,note='')=>request<WalkInVisit>(`/staff/walk-ins/${id}/offer`,{method:'POST',body:JSON.stringify({tableId,note})}),
   walkInAction:(id:number,action:string,body:unknown={})=>request<WalkInVisit>(`/staff/walk-ins/${id}/${action}`,{method:'POST',body:JSON.stringify(body)}),
   exitWalkIn:(id:number,status:string,note='')=>request<WalkInVisit>(`/staff/walk-ins/${id}/exit/${status}`,{method:'POST',body:JSON.stringify({note})}),
-  guestTable:(token:string)=>request<GuestTable>(`/table-guest/${encodeURIComponent(token)}`),
-  createTableRequest:(token:string,type:string,note:string)=>request<TableRequest>(`/table-guest/${encodeURIComponent(token)}/requests`,{method:'POST',body:JSON.stringify({type,note})}),
+  guestTable:(token:string)=>request<GuestTable>(`/table-guest/${encodeURIComponent(token)}`,undefined,false),
+  createTableRequest:(token:string,type:string,note:string)=>request<TableRequest>(`/table-guest/${encodeURIComponent(token)}/requests`,{method:'POST',body:JSON.stringify({type,note})},false),
   checkouts:()=>request<Checkout[]>('/staff/checkouts'),
   paypalConfig:()=>request<PayPalConfig>('/staff/checkouts/paypal/config'),
   createPayPalOrder:(sessionId:number,discountAmount:number)=>request<PayPalOrder>(`/staff/checkouts/${sessionId}/paypal/orders`,{method:'POST',body:JSON.stringify({discountAmount})}),

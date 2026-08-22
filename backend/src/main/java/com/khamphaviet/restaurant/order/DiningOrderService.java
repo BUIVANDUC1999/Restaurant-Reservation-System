@@ -6,6 +6,7 @@ import com.khamphaviet.restaurant.reservation.*;
 import com.khamphaviet.restaurant.service.*;
 import com.khamphaviet.restaurant.table.RestaurantTableRepository;
 import com.khamphaviet.restaurant.notification.*;
+import com.khamphaviet.restaurant.operations.StaffEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -18,14 +19,16 @@ public class DiningOrderService {
     private final ReservationRepository reservations; private final ReservationTableAssignmentRepository assignments;
     private final RestaurantTableRepository tables;
     private final NotificationService notifications;
+    private final StaffEventService staffEvents;
 
     public DiningOrderService(DiningOrderRepository orders, DiningOrderItemRepository items, ServiceSessionRepository sessions,
                               MenuItemRepository menu, ReservationRepository reservations,
                               ReservationTableAssignmentRepository assignments, RestaurantTableRepository tables,
-                              NotificationService notifications) {
+                              NotificationService notifications, StaffEventService staffEvents) {
         this.orders=orders;this.items=items;this.sessions=sessions;this.menu=menu;this.reservations=reservations;
         this.assignments=assignments;this.tables=tables;
         this.notifications=notifications;
+        this.staffEvents=staffEvents;
     }
 
     @Transactional
@@ -41,7 +44,10 @@ public class DiningOrderService {
                     .orElseThrow(()->new BusinessException("Một món đã chọn không còn phục vụ"));
             items.save(new DiningOrderItem(order.getId(),dish.getId(),dish.getName(),dish.getPrice(),line.quantity(),dish.getPreparationMinutes()));
         });
-        return response(order,session);
+        DiningOrderDtos.OrderResponse response=response(order,session);
+        staffEvents.publish("KITCHEN_ORDER","Phiếu món mới · "+String.join(", ",response.tableCodes()),
+                response.items().size()+" món đang chờ bếp tiếp nhận",order.getId());
+        return response;
     }
 
     public List<DiningOrderDtos.OrderResponse> listForSession(Long sessionId) {
@@ -61,6 +67,9 @@ public class DiningOrderService {
             items.save(new DiningOrderItem(order.getId(), item.getMenuItemId(), item.getItemNameSnapshot(),
                     item.getUnitPrice(), item.getQuantity(), preparationMinutes));
         });
+        Reservation reservation=reservations.findById(activeSession(sessionId).getReservationId()).orElseThrow();
+        staffEvents.publish("KITCHEN_ORDER","Phiếu món đặt trước · "+String.join(", ",tableCodes(reservation.getId())),
+                confirmed.size()+" món đang chờ bếp tiếp nhận",order.getId());
     }
 
     public List<DiningOrderDtos.OrderResponse> kitchenBoard() {
@@ -80,7 +89,16 @@ public class DiningOrderService {
             if(next==DiningOrderStatus.PREPARING)lines.stream().filter(i->i.getStatus()==DiningOrderItemStatus.SUBMITTED).forEach(DiningOrderItem::preparing);
             if(next==DiningOrderStatus.READY)lines.stream().filter(i->List.of(DiningOrderItemStatus.PREPARING,DiningOrderItemStatus.DELAYED).contains(i.getStatus())).forEach(DiningOrderItem::ready);
         }catch(IllegalStateException ex){throw new BusinessException("Chuyển trạng thái bếp không hợp lệ");}
-        syncOrder(order);return response(order,activeSession(order.getServiceSessionId()));
+        syncOrder(order);
+        if(next==DiningOrderStatus.READY){
+            ServiceSession session=activeSession(order.getServiceSessionId());
+            Reservation reservation=reservations.findById(session.getReservationId()).orElseThrow();
+            String tableLabel=String.join(", ",tableCodes(reservation.getId()));
+            notifications.createStaffAlert(reservation.getId(),NotificationType.DISH_READY,
+                    "Phiếu món xong · "+tableLabel,"Toàn bộ phiếu #"+order.getId()+" đã sẵn sàng",
+                    "order-ready-"+order.getId());
+        }
+        return response(order,activeSession(order.getServiceSessionId()));
     }
 
     @Transactional
@@ -121,7 +139,10 @@ public class DiningOrderService {
     public DiningOrderDtos.OrderResponse serve(Long id) {
         DiningOrder order=find(id);if(order.getStatus()!=DiningOrderStatus.READY)throw new BusinessException("Món chưa sẵn sàng để phục vụ");
         items.findByOrderIdInOrderByIdAsc(List.of(id)).stream().filter(i->i.getStatus()==DiningOrderItemStatus.READY).forEach(DiningOrderItem::served);
-        syncOrder(order);return response(order,activeSession(order.getServiceSessionId()));
+        syncOrder(order);
+        staffEvents.publish("ORDER_SERVED","Đã phục vụ phiếu #"+order.getId(),
+                "Toàn bộ món đã được mang ra bàn",order.getId());
+        return response(order,activeSession(order.getServiceSessionId()));
     }
 
     @Transactional

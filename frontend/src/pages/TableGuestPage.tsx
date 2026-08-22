@@ -37,10 +37,10 @@ export default function TableGuestPage() {
   async function send(type: TableRequest['type']) {
     setBusy(true); setError(''); setMessage('');
     try {
-      await api.createTableRequest(token, type, note);
+      const created = await api.createTableRequest(token, type, note);
       setMessage(table?.activeSession
-        ? 'Đã báo nhân viên. Vui lòng chờ tại bàn.'
-        : 'Đã gọi nhân viên hỗ trợ nhận bàn và đặt món.');
+        ? `Đã gửi yêu cầu #${created.id}. Nhân viên phụ trách sẽ hỗ trợ tại bàn.`
+        : `Đã gửi yêu cầu #${created.id}. Khách không cần đăng nhập; nhân viên sẽ đến hỗ trợ nhận bàn.`);
       setNote('');
       await load();
     } catch (exception) {
@@ -64,7 +64,7 @@ export default function TableGuestPage() {
     {table?.activeSession ? <div className="guest-staff-card"><UserRound/><span><small>NHÂN VIÊN PHỤ TRÁCH</small>
       <b>{table.assignedStaffName || 'Đang điều phối nhân viên'}</b></span></div>
       : <div className="guest-inactive"><UserRound/><div><b>Bạn vừa đến bàn?</b>
-        <p>Không cần đăng nhập. Nhấn nút bên dưới để nhân viên đến hỗ trợ nhận bàn và đặt món.</p></div></div>}
+        <p>Không cần đăng nhập. Phiên phục vụ sẽ được mở sau khi nhân viên xác nhận nhận khách tại bàn.</p></div></div>}
 
     <label className="guest-note">Ghi chú cho nhân viên
       <textarea maxLength={300} placeholder="Ví dụ: cần thực đơn, bàn có trẻ nhỏ..." value={note}

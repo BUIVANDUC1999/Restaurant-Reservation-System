@@ -83,8 +83,10 @@ export default function TablesPage() {
   const visibleTables = useMemo(() => tableView === 'ALL' || user?.role !== 'STAFF'
     ? tables : tables.filter(table => table.assignedStaffEmail === user.email), [tables, tableView, user]);
   const visibleTableIds = useMemo(() => new Set(visibleTables.map(table => table.id)), [visibleTables]);
-  const visibleRequests = useMemo(() => openRequests.filter(request => visibleTableIds.has(request.tableId)),
-    [openRequests, visibleTableIds]);
+  const visibleRequests = useMemo(() => openRequests.filter(request => {
+    const table=tables.find(value=>value.id===request.tableId);
+    return visibleTableIds.has(request.tableId)||!table?.assignedStaffEmail;
+  }), [openRequests, visibleTableIds, tables]);
   const selected = useMemo(()=>tables.find(table=>table.id===selectedId),[tables,selectedId]);
   const selectedSessionId = selected?.serviceSessionId;
   useEffect(()=>{
@@ -122,6 +124,18 @@ export default function TablesPage() {
     return [...groups.values()];
   }, [tables]);
   async function requestAction(id: number, status: string) { await api.updateTableRequest(id, status); await load(); }
+  async function openAlert(notification: Notification) {
+    let targetTableId:number|undefined;
+    if (notification.type === 'TABLE_CALL') {
+      const tableCode=notification.title.match(/B\d{2}/)?.[0];
+      targetTableId=tables.find(table=>table.code===tableCode)?.id;
+    }
+    await api.readNotification(notification.id);
+    await load();
+    if (targetTableId) {
+      setDetailOrders([]);setDetailError('');setSelectedId(targetTableId);
+    }
+  }
   async function resolveTimeout(id: number) { await api.resolveTimeout(id); await load(); }
   async function acknowledgeTimeout(id: number) { await api.acknowledgeTimeout(id); await load(); }
   async function transferTimeout(id: number) {
@@ -165,8 +179,9 @@ export default function TablesPage() {
 
     <div className="operations-alert-strip">
       {alerts.filter(a => !a.readAt).slice(0, 5).map(a =>
-        <button key={a.id} onClick={async () => { await api.readNotification(a.id); await load(); }}>
-          <BellRing/><span><b>{a.title}</b><small>{firstSentence(a.message)}</small></span><Check/>
+        <button key={a.id} onClick={() => void openAlert(a)}>
+          <BellRing/><span><b>{a.title}</b><small>{firstSentence(a.message)}</small></span>
+          {a.type==='TABLE_CALL'?<ChevronRight/>:<Check/>}
         </button>)}
     </div>
 
@@ -295,7 +310,9 @@ export default function TablesPage() {
           <span><Phone/> {selected.customerPhone||'Không có số điện thoại'}</span>
         </div>}
         {!!selectedRequests.length&&<section className="table-detail-requests"><h3><BellRing/> Yêu cầu đang xử lý</h3>
-          {selectedRequests.map(request=><p key={request.id}><b>{requestLabels[request.type]}</b><span>{request.note||'Không có ghi chú'} · {request.status==='NEW'?'Chưa nhận':'Đã có người nhận'}</span></p>)}
+          {selectedRequests.map(request=><p key={request.id}><b>{requestLabels[request.type]}</b><span>{request.note||'Không có ghi chú'} · {request.status==='NEW'?'Chưa nhận':'Đã có người nhận'}</span>
+            {request.status==='NEW'?<button onClick={()=>void requestAction(request.id,'ACKNOWLEDGED')}>Nhận xử lý</button>:<button onClick={()=>void requestAction(request.id,'DONE')}><Check/> Đã xong</button>}
+          </p>)}
         </section>}
         <section className="admin-dish-progress">
           <div className="admin-detail-title"><h3><ChefHat/> Tiến độ từng món</h3><small>{selectedItems.length} món</small></div>

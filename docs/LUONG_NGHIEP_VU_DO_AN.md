@@ -284,7 +284,8 @@ Luồng yêu cầu:
 
 Quy tắc:
 
-- QR chỉ hoạt động khi bàn có phiên phục vụ đang mở.
+- Trước khi bàn có phiên phục vụ, QR cho phép khách gửi yêu cầu **Gọi nhân viên** để được hỗ trợ nhận bàn.
+- Khi phiên phục vụ đã mở, QR cho phép gọi nhân viên, xin nước, xin dụng cụ hoặc yêu cầu thanh toán.
 - Có giới hạn chống gửi yêu cầu liên tục.
 - Yêu cầu quá thời gian nhận việc sẽ tạo timeout.
 - Nhân viên phải bấm nhận việc trước khi hoàn tất.

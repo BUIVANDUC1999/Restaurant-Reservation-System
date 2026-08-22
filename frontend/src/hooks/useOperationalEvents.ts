@@ -35,7 +35,14 @@ export function useOperationalEvents(onEvent:()=>void){
             const event=JSON.parse(raw.slice(5).trim()) as StaffEvent;
             if(event.type==='CONNECTED')continue;
             setLastEvent(event);callback.current();
-            if(document.hidden&&Notification.permission==='granted')new Notification(event.title,{body:event.message});
+            if(document.hidden&&Notification.permission==='granted'){
+              const notification=new Notification(event.title,{body:event.message});
+              notification.onclick=()=>{
+                window.focus();
+                window.location.href=event.type==='TABLE_CALL'?'/staff/ban':event.type.includes('RESERVATION')?'/staff/dat-ban':'/staff';
+                notification.close();
+              };
+            }
           }
         }
       }catch(error){if(!stopped&&!(error instanceof DOMException&&error.name==='AbortError'))setConnected(false)}

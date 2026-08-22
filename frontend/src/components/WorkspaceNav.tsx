@@ -14,17 +14,17 @@ const entries={
   ADMIN:[
     ['/admin','Tổng quan',LayoutDashboard],['/admin/tai-khoan','Tài khoản',UserCog],
     ['/admin/ca-lam-viec','Ca làm việc',CalendarClock],
-    ['/staff','Đặt bàn',CalendarCheck],['/staff/walk-in','Khách tại quán',UsersRound],
+    ['/staff','Dashboard phục vụ',LayoutDashboard],['/staff/dat-ban','Đặt bàn',CalendarCheck],['/staff/walk-in','Khách tại quán',UsersRound],
     ['/staff/phuc-vu','Phục vụ',UtensilsCrossed],['/staff/ban','Bàn của tôi',TableProperties],
     ['/staff/thuc-don','Quản lý món',UtensilsCrossed],['/staff/thanh-toan','Thanh toán',Banknote],
-    ['/bep','Bếp',ChefHat]
+    ['/bep','Dashboard bếp',LayoutDashboard],['/bep/dieu-phoi','Điều phối bếp',ChefHat]
   ],
   STAFF:[
-    ['/staff','Đặt bàn',CalendarCheck],['/staff/walk-in','Khách tại quán',UsersRound],
+    ['/staff','Tổng quan',LayoutDashboard],['/staff/dat-ban','Đặt bàn',CalendarCheck],['/staff/walk-in','Khách tại quán',UsersRound],
     ['/staff/phuc-vu','Phục vụ',UtensilsCrossed],['/staff/ban','Sơ đồ bàn',TableProperties],
     ['/staff/thuc-don','Quản lý món',UtensilsCrossed],['/staff/thanh-toan','Thanh toán',Banknote]
   ],
-  KITCHEN:[['/bep','Điều phối bếp',ChefHat]],
+  KITCHEN:[['/bep','Tổng quan',LayoutDashboard],['/bep/dieu-phoi','Điều phối bếp',ChefHat]],
   CUSTOMER:[]
 } satisfies Record<AuthUser['role'],Array<[string,string,typeof LayoutDashboard]>>;
 
@@ -39,7 +39,7 @@ export default function WorkspaceNav(){
     <div className="workspace-user"><span>{user.fullName.split(' ').slice(-2).map(part=>part[0]).join('')}</span>
       <div><b>{user.fullName}</b><small>{roleLabels[user.role]}</small></div></div>
     <nav>{entries[user.role].map(([path,label,Icon])=>
-      <NavLink key={path} to={path} end={path==='/staff'||path==='/admin'} title={label}>
+      <NavLink key={path} to={path} end={path==='/staff'||path==='/admin'||path==='/bep'} title={label}>
         <Icon/><span>{label}</span>
       </NavLink>)}</nav>
     <button className="workspace-collapse" onClick={toggle}>

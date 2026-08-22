@@ -88,7 +88,7 @@ export default function AdminDashboardPage(){
   const detailPayments=metricDetail==='TODAY_REVENUE'?operationDetails?.paymentsToday||[]:
     metricDetail==='MONTH_REVENUE'?operationDetails?.paymentsThisMonth||[]:[];
   const metricLink=metricDetail&&['ALL_USERS','EMPLOYEES','CUSTOMERS','ACTIVE_USERS'].includes(metricDetail)?'/admin/tai-khoan':
-    metricDetail==='TODAY_RESERVATIONS'?'/staff':metricDetail==='ACTIVE_SESSIONS'?'/staff/ban':'/staff/thanh-toan';
+    metricDetail==='TODAY_RESERVATIONS'?'/staff/dat-ban':metricDetail==='ACTIVE_SESSIONS'?'/staff/ban':'/staff/thanh-toan';
 
   return <section className="page-section container admin-page">
     <div className="admin-live-heading">
@@ -143,10 +143,10 @@ export default function AdminDashboardPage(){
     <div className="admin-actions">
       <Link to="/admin/tai-khoan"><UserCog/><div><h2>Quản lý tài khoản</h2><p>Xem danh sách Admin, nhân viên và khách hàng.</p></div><b>→</b></Link>
       <Link to="/admin/ca-lam-viec"><CalendarClock/><div><h2>Ca làm việc</h2><p>Xếp ca, theo dõi tải bàn và kiểm tra lịch sử bàn giao.</p></div><b>→</b></Link>
-      <Link to="/staff"><CalendarCheck/><div><h2>Quản lý đặt bàn</h2><p>Xác nhận yêu cầu, món đặt trước và tiếp nhận khách.</p></div><b>→</b></Link>
+      <Link to="/staff/dat-ban"><CalendarCheck/><div><h2>Quản lý đặt bàn</h2><p>Xác nhận yêu cầu, món đặt trước và tiếp nhận khách.</p></div><b>→</b></Link>
       <Link to="/staff/ban"><TableProperties/><div><h2>Quản lý bàn</h2><p>Theo dõi sơ đồ và trạng thái bàn theo thời gian thực.</p></div><b>→</b></Link>
       <Link to="/staff/thuc-don"><UtensilsCrossed/><div><h2>Quản lý món ăn</h2><p>Thêm món, sửa giá, hình ảnh và trạng thái phục vụ.</p></div><b>→</b></Link>
-      <Link to="/bep"><ChefHat/><div><h2>Điều phối bếp</h2><p>Theo dõi phiếu mới, món đang chế biến và món sẵn sàng.</p></div><b>→</b></Link>
+      <Link to="/bep/dieu-phoi"><ChefHat/><div><h2>Điều phối bếp</h2><p>Theo dõi phiếu mới, món đang chế biến và món sẵn sàng.</p></div><b>→</b></Link>
       <Link to="/staff/thanh-toan"><Banknote/><div><h2>Thanh toán</h2><p>Lập hóa đơn, giảm giá và xác nhận thanh toán theo bàn.</p></div><b>→</b></Link>
     </div>
 
@@ -179,7 +179,7 @@ export default function AdminDashboardPage(){
             </article>;
           })}
         </section>
-        <footer><Link to="/staff/ban" onClick={()=>setSelectedId(undefined)}>Điều phối nhân viên</Link><Link to="/bep" onClick={()=>setSelectedId(undefined)}>Mở bảng bếp</Link></footer>
+        <footer><Link to="/staff/ban" onClick={()=>setSelectedId(undefined)}>Điều phối nhân viên</Link><Link to="/bep/dieu-phoi" onClick={()=>setSelectedId(undefined)}>Mở bảng bếp</Link></footer>
       </aside>
     </div>}
 

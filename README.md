@@ -16,7 +16,7 @@ Repository này **chỉ chứa Web React và Backend Spring Boot**. Mã Flutter 
 
 Xem [hướng dẫn chạy hai dự án độc lập](docs/RUN_SEPARATE_PROJECTS.md) để tránh mở nhầm thư mục hoặc chạy nhầm cổng.
 
-## Chạy nhanh bằng Docker
+## Chạy nhanh bằng Docker (development)
 
 ```bash
 docker compose up --build
@@ -25,6 +25,8 @@ docker compose up --build
 - Web: http://localhost:5173
 - API: http://localhost:8080/api/v1
 - Swagger: http://localhost:8080/swagger-ui.html
+
+Production dùng `docker-compose.prod.yml` cùng PostgreSQL, JWT và domain thật. Xem [hướng dẫn triển khai](docs/DEPLOYMENT.md).
 
 ## Chạy development không cần PostgreSQL
 

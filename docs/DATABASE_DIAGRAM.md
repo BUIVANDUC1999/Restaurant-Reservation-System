@@ -1,6 +1,6 @@
 # Sơ đồ cơ sở dữ liệu
 
-Sơ đồ này phản ánh schema hiện tại sau migration `V23`. Hệ thống có 19 bảng, chia thành các nhóm: tài khoản/ca làm, đặt bàn, vận hành tại bàn, bếp, thanh toán, khách tại quán và cảnh báo timeout.
+Sơ đồ này phản ánh schema hiện tại sau migration `V23`. Hệ thống có 20 bảng, chia thành các nhóm: tài khoản/ca làm, đặt bàn, vận hành tại bàn, bếp, thanh toán, khách tại quán và cảnh báo timeout. Luồng tác nhân và nghiệp vụ sử dụng các bảng này được mô tả tại [`USE_CASE_DIAGRAM.md`](USE_CASE_DIAGRAM.md).
 
 ```mermaid
 erDiagram
